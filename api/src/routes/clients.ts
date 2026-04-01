@@ -5,6 +5,7 @@ import {
   createClient,
   getClient,
   updateClient,
+  deleteClient,
   getClientStats,
 } from '../controllers/clientController';
 
@@ -16,5 +17,6 @@ router.post('/', createClient);
 router.get('/:id/stats', getClientStats);
 router.get('/:id', getClient);
 router.patch('/:id', updateClient);
+router.delete('/:id', deleteClient);
 
 export default router;
