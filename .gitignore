@@ -12,8 +12,8 @@ build/
 .env.local
 .env.production
 
-# Prisma generated
-api/prisma/migrations/
+# Prisma generated (migrations must be committed)
+# api/prisma/migrations/
 
 # Logs
 *.log
