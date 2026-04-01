@@ -1,0 +1,218 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id               String   @id @default(cuid())
+  nome             String
+  slug             String   @unique
+  piano            String   @default("free")
+  telefono         String?
+  indirizzo        String?
+  accontoRichiesto Boolean  @default(false)
+  accontoPerc      Int      @default(30)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  staff         Staff[]
+  servizi       Servizio[]
+  clienti       Cliente[]
+  appuntamenti  Appuntamento[]
+  users         User[]
+
+  @@map("tenants")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  tenantId     String   @map("tenant_id")
+  email        String
+  passwordHash String   @map("password_hash")
+  nome         String
+  ruolo        String   @default("admin")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  refreshTokens RefreshToken[]
+
+  @@unique([tenantId, email])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Staff {
+  id       String  @id @default(cuid())
+  tenantId String  @map("tenant_id")
+  nome     String
+  ruolo    String  @default("barbiere")
+  telefono String?
+  attivo   Boolean @default(true)
+
+  tenant            Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appuntamenti      Appuntamento[]
+  disponibilita     Disponibilita[]
+  clientiPreferenze ClientePreferenza[]
+
+  @@map("staff")
+}
+
+model Servizio {
+  id         String  @id @default(cuid())
+  tenantId   String  @map("tenant_id")
+  nome       String
+  durataMini Int     @map("durata_min")
+  prezzo     Float
+  attivo     Boolean @default(true)
+
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appuntamenti Appuntamento[]
+
+  @@map("servizi")
+}
+
+model Cliente {
+  id           String    @id @default(cuid())
+  tenantId     String    @map("tenant_id")
+  nome         String
+  telefono     String?
+  email        String?
+  tag          String[]  @default([])
+  visiteTotali Int       @default(0) @map("visite_totali")
+  valoreTotale Float     @default(0) @map("valore_totale")
+  ultimaVisita DateTime? @map("ultima_visita")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appuntamenti      Appuntamento[]
+  notifiche         Notifica[]
+  clientePreferenze ClientePreferenza[]
+
+  @@map("clienti")
+}
+
+model Appuntamento {
+  id         String            @id @default(cuid())
+  tenantId   String            @map("tenant_id")
+  clienteId  String            @map("cliente_id")
+  staffId    String            @map("staff_id")
+  servizioId String            @map("servizio_id")
+  inizio     DateTime
+  fine       DateTime
+  stato      StatoAppuntamento @default(pending)
+  importo    Float
+  note       String?
+  createdAt  DateTime          @default(now()) @map("created_at")
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cliente   Cliente    @relation(fields: [clienteId], references: [id])
+  staff     Staff      @relation(fields: [staffId], references: [id])
+  servizio  Servizio   @relation(fields: [servizioId], references: [id])
+  pagamenti Pagamento[]
+  notifiche Notifica[]
+
+  @@map("appuntamenti")
+}
+
+enum StatoAppuntamento {
+  pending
+  confirmed
+  done
+  noshow
+  cancelled
+}
+
+model Pagamento {
+  id               String       @id @default(cuid())
+  appuntamentoId   String       @map("appuntamento_id")
+  stripePaymentId  String?      @map("stripe_payment_id")
+  importo          Float
+  tipo             TipoPagamento
+  stato            String       @default("pending")
+  pagatoAt         DateTime?    @map("pagato_at")
+
+  appuntamento Appuntamento @relation(fields: [appuntamentoId], references: [id], onDelete: Cascade)
+
+  @@map("pagamenti")
+}
+
+enum TipoPagamento {
+  acconto
+  saldo
+}
+
+model Notifica {
+  id             String         @id @default(cuid())
+  appuntamentoId String         @map("appuntamento_id")
+  clienteId      String         @map("cliente_id")
+  canale         CanalNotifica
+  tipo           TipoNotifica
+  stato          StatoNotifica  @default(pending)
+  schedulataAt   DateTime       @map("schedulata_at")
+  inviatAt       DateTime?      @map("inviata_at")
+
+  appuntamento Appuntamento @relation(fields: [appuntamentoId], references: [id], onDelete: Cascade)
+  cliente      Cliente      @relation(fields: [clienteId], references: [id])
+
+  @@map("notifiche")
+}
+
+enum CanalNotifica {
+  sms
+  email
+  push
+}
+
+enum TipoNotifica {
+  conferma
+  reminder_24h
+  reminder_1h
+  cancellazione
+}
+
+enum StatoNotifica {
+  pending
+  sent
+  failed
+}
+
+model Disponibilita {
+  id              String  @id @default(cuid())
+  staffId         String  @map("staff_id")
+  giornoSettimana Int     @map("giorno_settimana")
+  oraInizio       String  @map("ora_inizio")
+  oraFine         String  @map("ora_fine")
+  attivo          Boolean @default(true)
+
+  staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@map("disponibilita")
+}
+
+model ClientePreferenza {
+  id        String   @id @default(cuid())
+  clienteId String   @map("cliente_id")
+  staffId   String?  @map("staff_id")
+  tag       String[]  @default([])
+  note      String?
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  staff   Staff?  @relation(fields: [staffId], references: [id])
+
+  @@map("clienti_preferenze")
+}

@@ -1,0 +1,10 @@
+{
+  "name": "barberflow",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:api": "npm run dev --prefix api",
+    "dev:web": "npm run dev --prefix web",
+    "dev": "npm run dev --prefix web"
+  }
+}
