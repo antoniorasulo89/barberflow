@@ -112,7 +112,25 @@ export async function updateClient(req: Request, res: Response, next: NextFuncti
   }
 }
 
-export async function getClientStats(req: Request, res: Response, next: NextFunction) {
+export async function deleteClient(req: Request, res: Response, next: NextFunction) {
+  try {
+    const existing = await prisma.cliente.findFirst({
+      where: { id: req.params.id, tenantId: req.tenantId! },
+    });
+    if (!existing) return next(notFound('Cliente'));
+
+    await prisma.$transaction([
+      prisma.notifica.deleteMany({ where: { clienteId: req.params.id } }),
+      prisma.appuntamento.deleteMany({ where: { clienteId: req.params.id } }),
+      prisma.clientePreferenza.deleteMany({ where: { clienteId: req.params.id } }),
+      prisma.cliente.delete({ where: { id: req.params.id } }),
+    ]);
+
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+}
   try {
     const cliente = await prisma.cliente.findFirst({
       where: { id: req.params.id, tenantId: req.tenantId! },

@@ -28,6 +28,11 @@ export default function ClientsPage() {
 
   const clients: Cliente[] = data?.items ?? [];
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => clientsApi.delete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['clients'] }),
+  });
+
   const createMutation = useMutation({
     mutationFn: () =>
       clientsApi.create({
@@ -79,7 +84,7 @@ export default function ClientsPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                {['Cliente', 'Contatti', 'Tag', 'Visite', 'Valore totale', 'Ultima visita', ''].map((h) => (
+                {['Cliente', 'Contatti', 'Tag', 'Visite', 'Valore totale', 'Ultima visita', '', ''].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     {h}
                   </th>
@@ -111,9 +116,23 @@ export default function ClientsPage() {
                     {c.ultimaVisita ? format(parseISO(c.ultimaVisita), 'd MMM yyyy', { locale: it }) : '—'}
                   </td>
                   <td className="px-4 py-3">
-                    <Link to={`/clients/${c.id}`} className="text-brand-600 hover:text-brand-700 text-sm font-medium">
+                    <Link to={`/admin/clients/${c.id}`} className="text-brand-600 hover:text-brand-700 text-sm font-medium">
                       Profilo →
                     </Link>
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => {
+                        if (confirm(`Eliminare "${c.nome}"? Verranno cancellati anche tutti i suoi appuntamenti.`)) {
+                          deleteMutation.mutate(c.id);
+                        }
+                      }}
+                      disabled={deleteMutation.isPending}
+                      className="text-red-400 hover:text-red-600 transition-colors text-sm"
+                      title="Elimina cliente"
+                    >
+                      🗑
+                    </button>
                   </td>
                 </tr>
               ))}

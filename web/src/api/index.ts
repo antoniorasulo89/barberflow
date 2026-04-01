@@ -40,6 +40,8 @@ export const clientsApi = {
     apiClient.post('/clients', data).then((r) => r.data),
   update: (id: string, data: Record<string, unknown>) =>
     apiClient.patch(`/clients/${id}`, data).then((r) => r.data),
+  delete: (id: string) =>
+    apiClient.delete(`/clients/${id}`).then((r) => r.data),
   stats: (id: string) =>
     apiClient.get(`/clients/${id}/stats`).then((r) => r.data),
 };

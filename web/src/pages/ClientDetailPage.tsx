@@ -27,7 +27,7 @@ export default function ClientDetailPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
-        <Link to="/clients" className="text-gray-400 hover:text-gray-600 text-sm">← Clienti</Link>
+        <Link to="/admin/clients" className="text-gray-400 hover:text-gray-600 text-sm">← Clienti</Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
