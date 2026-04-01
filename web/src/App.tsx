@@ -7,33 +7,36 @@ import ClientsPage from './pages/ClientsPage';
 import ClientDetailPage from './pages/ClientDetailPage';
 import StaffPage from './pages/StaffPage';
 import ServicesPage from './pages/ServicesPage';
-import BookingPage from './pages/BookingPage';
+import ClientPortalPage from './pages/ClientPortalPage';
+
+const DEFAULT_SLUG = import.meta.env.VITE_SLUG ?? 'barbershop-napoli';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+  return isAuthenticated ? <>{children}</> : <Navigate to="/admin/login" replace />;
 }
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/book/:slug" element={<BookingPage />} />
+      <Route path="/" element={<Navigate to={`/${DEFAULT_SLUG}`} replace />} />
+      <Route path="/admin/login" element={<LoginPage />} />
       <Route
-        path="/"
+        path="/admin"
         element={
           <PrivateRoute>
             <DashboardLayout />
           </PrivateRoute>
         }
       >
-        <Route index element={<Navigate to="/agenda" replace />} />
+        <Route index element={<Navigate to="/admin/agenda" replace />} />
         <Route path="agenda" element={<AgendaPage />} />
         <Route path="clients" element={<ClientsPage />} />
         <Route path="clients/:id" element={<ClientDetailPage />} />
         <Route path="staff" element={<StaffPage />} />
         <Route path="services" element={<ServicesPage />} />
       </Route>
+      <Route path="/:slug" element={<ClientPortalPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

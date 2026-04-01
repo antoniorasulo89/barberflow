@@ -31,7 +31,7 @@ async function main() {
       accontoRichiesto: false,
     },
   });
-  console.log('Tenant created:', tenant.nome);
+  console.log('Tenant ready:', tenant.nome);
 
   // Admin user
   const passwordHash = await bcrypt.hash('admin1234', 12);
@@ -47,9 +47,11 @@ async function main() {
     },
   });
 
-  // Staff
-  const marco = await prisma.staff.create({
-    data: {
+  // Staff — upsert by (tenantId, nome) thanks to @@unique
+  const marco = await prisma.staff.upsert({
+    where: { tenantId_nome: { tenantId: tenant.id, nome: 'Marco Esposito' } },
+    update: {},
+    create: {
       tenantId: tenant.id,
       nome: 'Marco Esposito',
       ruolo: 'barbiere',
@@ -57,48 +59,70 @@ async function main() {
     },
   });
 
-  const luca = await prisma.staff.create({
-    data: {
+  const luca = await prisma.staff.upsert({
+    where: { tenantId_nome: { tenantId: tenant.id, nome: 'Luca Romano' } },
+    update: {},
+    create: {
       tenantId: tenant.id,
       nome: 'Luca Romano',
       ruolo: 'barbiere',
       telefono: '+39 333 2222222',
     },
   });
-  console.log('Staff created: Marco, Luca');
+  console.log('Staff ready: Marco, Luca');
 
-  // Availability: Mon-Sat (1-6), 09:00-13:00 and 15:00-19:00
+  // Availability: seed only if not already set for this staff
   const staffIds = [marco.id, luca.id];
   const giorni = [1, 2, 3, 4, 5, 6]; // Monday to Saturday
 
   for (const staffId of staffIds) {
-    for (const giorno of giorni) {
-      await prisma.disponibilita.createMany({
-        data: [
-          { staffId, giornoSettimana: giorno, oraInizio: '09:00', oraFine: '13:00', attivo: true },
-          { staffId, giornoSettimana: giorno, oraInizio: '15:00', oraFine: '19:00', attivo: true },
-        ],
-      });
+    const existing = await prisma.disponibilita.count({ where: { staffId } });
+    if (existing === 0) {
+      for (const giorno of giorni) {
+        await prisma.disponibilita.createMany({
+          data: [
+            { staffId, giornoSettimana: giorno, oraInizio: '09:00', oraFine: '13:00', attivo: true },
+            { staffId, giornoSettimana: giorno, oraInizio: '15:00', oraFine: '19:00', attivo: true },
+          ],
+        });
+      }
     }
   }
-  console.log('Availability created');
+  console.log('Availability ready');
 
-  // Servizi
-  const taglio = await prisma.servizio.create({
-    data: { tenantId: tenant.id, nome: 'Taglio', durataMini: 30, prezzo: 25 },
+  // Servizi — upsert by (tenantId, nome)
+  const taglio = await prisma.servizio.upsert({
+    where: { tenantId_nome: { tenantId: tenant.id, nome: 'Taglio' } },
+    update: {},
+    create: { tenantId: tenant.id, nome: 'Taglio', durataMini: 30, prezzo: 25 },
   });
-  const barba = await prisma.servizio.create({
-    data: { tenantId: tenant.id, nome: 'Barba', durataMini: 20, prezzo: 18 },
+  const barba = await prisma.servizio.upsert({
+    where: { tenantId_nome: { tenantId: tenant.id, nome: 'Barba' } },
+    update: {},
+    create: { tenantId: tenant.id, nome: 'Barba', durataMini: 20, prezzo: 18 },
   });
-  const taglioBarba = await prisma.servizio.create({
-    data: { tenantId: tenant.id, nome: 'Taglio + Barba', durataMini: 50, prezzo: 38 },
+  const taglioBarba = await prisma.servizio.upsert({
+    where: { tenantId_nome: { tenantId: tenant.id, nome: 'Taglio + Barba' } },
+    update: {},
+    create: { tenantId: tenant.id, nome: 'Taglio + Barba', durataMini: 50, prezzo: 38 },
   });
-  const colore = await prisma.servizio.create({
-    data: { tenantId: tenant.id, nome: 'Colore', durataMini: 60, prezzo: 55 },
+  const colore = await prisma.servizio.upsert({
+    where: { tenantId_nome: { tenantId: tenant.id, nome: 'Colore' } },
+    update: {},
+    create: { tenantId: tenant.id, nome: 'Colore', durataMini: 60, prezzo: 55 },
   });
-  console.log('Servizi created');
+  console.log('Servizi ready');
 
-  // 10 Clienti
+  // Clienti — skip entirely if any already exist for this tenant
+  const existingClienti = await prisma.cliente.count({ where: { tenantId: tenant.id } });
+  if (existingClienti > 0) {
+    console.log('Clienti already seeded, skipping.');
+    console.log('\nSeed complete!');
+    console.log('Login: admin@barbershop-napoli.it / admin1234');
+    console.log('Slug: barbershop-napoli');
+    return;
+  }
+
   const clientiData = [
     { nome: 'Antonio Russo', telefono: '+39 347 1000001', email: 'antonio.russo@email.it', tag: ['vip'] },
     { nome: 'Giovanni De Luca', telefono: '+39 347 1000002', email: 'giovanni.deluca@email.it', tag: [] },
@@ -120,7 +144,6 @@ async function main() {
       data: { tenantId: tenant.id, ...clienteData },
     });
 
-    // 4-8 appointments in the last 3 months
     const numAppointments = 4 + Math.floor(Math.random() * 5);
     let visiteTotali = 0;
     let valoreTotale = 0;
@@ -136,7 +159,6 @@ async function main() {
 
       const inizio = setTime(appointmentDate, hour, 0);
       const fine = new Date(inizio.getTime() + servizio.durataMini * 60 * 1000);
-
       const stato: StatoAppuntamento = daysBack > 0 ? 'done' : 'confirmed';
 
       try {
