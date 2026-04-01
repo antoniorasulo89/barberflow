@@ -11,7 +11,7 @@
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset --force && tsx prisma/seed.ts",
-    "deploy": "prisma migrate deploy && tsx prisma/seed.ts && node dist/index.js"
+    "deploy": "(prisma migrate resolve --rolled-back 20260401000000_unique_staff_servizio || true) && prisma migrate deploy && tsx prisma/seed.ts && node dist/index.js"
   },
   "dependencies": {
     "@prisma/client": "^5.13.0",
