@@ -8,7 +8,7 @@ import {
   isSameDay, isToday,
 } from 'date-fns';
 import { it } from 'date-fns/locale';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { appointmentsApi, staffApi } from '../api';
 import { Appuntamento, Staff, StatoAppuntamento } from '../types';
