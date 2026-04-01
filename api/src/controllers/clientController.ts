@@ -131,6 +131,8 @@ export async function deleteClient(req: Request, res: Response, next: NextFuncti
     next(err);
   }
 }
+
+export async function getClientStats(req: Request, res: Response, next: NextFunction) {
   try {
     const cliente = await prisma.cliente.findFirst({
       where: { id: req.params.id, tenantId: req.tenantId! },
