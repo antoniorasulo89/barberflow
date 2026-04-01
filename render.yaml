@@ -56,7 +56,7 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://barberflow-api.onrender.com
+        value: https://barberflow-api-zmgl.onrender.com
 
 # ── PostgreSQL ────────────────────────────────────────────────────
 databases:
