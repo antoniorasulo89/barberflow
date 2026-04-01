@@ -21,6 +21,8 @@ const updateSchema = z.object({
 
 const listSchema = z.object({
   data: z.string().optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
   staffId: z.string().optional(),
   stato: z.enum(['pending', 'confirmed', 'done', 'noshow', 'cancelled']).optional(),
   page: z.coerce.number().default(1),
@@ -29,7 +31,7 @@ const listSchema = z.object({
 
 export async function listAppointments(req: Request, res: Response, next: NextFunction) {
   try {
-    const { data, staffId, stato, page, limit } = listSchema.parse(req.query);
+    const { data, from, to, staffId, stato, page, limit } = listSchema.parse(req.query);
     const tenantId = req.tenantId!;
 
     const where: Record<string, unknown> = { tenantId };
@@ -40,6 +42,11 @@ export async function listAppointments(req: Request, res: Response, next: NextFu
       const nextDay = new Date(day);
       nextDay.setDate(nextDay.getDate() + 1);
       where.inizio = { gte: day, lt: nextDay };
+    } else if (from || to) {
+      const range: Record<string, Date> = {};
+      if (from) range.gte = new Date(from);
+      if (to) range.lt = new Date(to);
+      where.inizio = range;
     }
 
     const [items, total] = await Promise.all([
