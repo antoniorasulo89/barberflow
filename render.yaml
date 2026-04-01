@@ -57,6 +57,8 @@ services:
     envVars:
       - key: VITE_API_URL
         value: https://barberflow-api-zmgl.onrender.com
+      - key: VITE_SLUG
+        value: barbershop-napoli
 
 # ── PostgreSQL ────────────────────────────────────────────────────
 databases:

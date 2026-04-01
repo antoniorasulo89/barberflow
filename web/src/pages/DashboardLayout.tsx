@@ -1,11 +1,13 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
+const DEFAULT_SLUG = import.meta.env.VITE_SLUG ?? 'barbershop-napoli';
+
 const navItems = [
-  { to: '/agenda', label: 'Agenda', icon: '📅' },
-  { to: '/clients', label: 'Clienti', icon: '👥' },
-  { to: '/staff', label: 'Staff', icon: '💈' },
-  { to: '/services', label: 'Servizi', icon: '✂️' },
+  { to: '/admin/agenda', label: 'Agenda', icon: '📅' },
+  { to: '/admin/clients', label: 'Clienti', icon: '👥' },
+  { to: '/admin/staff', label: 'Staff', icon: '💈' },
+  { to: '/admin/services', label: 'Servizi', icon: '✂️' },
 ];
 
 export default function DashboardLayout() {
@@ -14,7 +16,7 @@ export default function DashboardLayout() {
 
   async function handleLogout() {
     await logout();
-    navigate('/login');
+    navigate('/admin/login');
   }
 
   return (
@@ -47,8 +49,15 @@ export default function DashboardLayout() {
           ))}
         </nav>
 
-        <div className="px-3 py-4 border-t border-gray-800">
-          <div className="px-3 py-2 text-xs text-gray-500 truncate">{user?.email}</div>
+        <div className="px-3 py-4 border-t border-gray-800 space-y-1">
+          <a
+            href={`/${DEFAULT_SLUG}`}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors w-full"
+          >
+            <span>🌐</span>
+            Portale clienti
+          </a>
+          <div className="px-3 py-1 text-xs text-gray-500 truncate">{user?.email}</div>
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors w-full text-left"

@@ -24,7 +24,7 @@ apiClient.interceptors.response.use(
       const refreshToken = localStorage.getItem('refreshToken');
       if (!refreshToken) {
         localStorage.clear();
-        window.location.href = '/login';
+        window.location.href = '/admin/login';
         return Promise.reject(error);
       }
       try {
@@ -34,7 +34,7 @@ apiClient.interceptors.response.use(
         return apiClient(original);
       } catch {
         localStorage.clear();
-        window.location.href = '/login';
+        window.location.href = '/admin/login';
         return Promise.reject(error);
       }
     }
