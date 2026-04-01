@@ -22,6 +22,11 @@ export function errorHandler(
     return;
   }
 
-  logger.error('Unhandled error', { err });
-  res.status(500).json({ error: 'Errore interno del server', code: 'INTERNAL_ERROR' });
+  const message = err instanceof Error ? err.message : String(err);
+  logger.error('Unhandled error', { message, err });
+  res.status(500).json({
+    error: 'Errore interno del server',
+    code: 'INTERNAL_ERROR',
+    detail: process.env.NODE_ENV !== 'production' ? message : undefined,
+  });
 }

@@ -40,6 +40,18 @@ app.use(requestLogger);
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
+app.get('/debug/db', async (_req, res) => {
+  try {
+    const { PrismaClient } = await import('@prisma/client');
+    const p = new PrismaClient();
+    const count = await p.tenant.count();
+    await p.$disconnect();
+    res.json({ ok: true, tenants: count, db: process.env.DATABASE_URL?.slice(0, 40) + '...' });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
 app.use('/auth', authRoutes);
 app.use('/appointments', appointmentRoutes);
 app.use('/availability', availabilityRoutes);
