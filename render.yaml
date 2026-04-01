@@ -1,0 +1,69 @@
+services:
+  # ── API (Node.js) ────────────────────────────────────────────────
+  - type: web
+    name: barberflow-api
+    env: node
+    region: frankfurt
+    plan: free
+    rootDir: api
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npm run deploy
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: barberflow-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: REDIS_URL
+        value: ""
+      - key: STRIPE_SECRET_KEY
+        value: ""
+      - key: STRIPE_WEBHOOK_SECRET
+        value: ""
+      - key: TWILIO_ACCOUNT_SID
+        value: ""
+      - key: TWILIO_AUTH_TOKEN
+        value: ""
+      - key: TWILIO_PHONE_NUMBER
+        value: ""
+      - key: RESEND_API_KEY
+        value: ""
+      - key: RESEND_FROM_EMAIL
+        value: noreply@barberflow.io
+      - key: FRONTEND_URL
+        value: https://barberflow-web.onrender.com
+
+  # ── Frontend (React/Vite static) ─────────────────────────────────
+  - type: web
+    name: barberflow-web
+    env: static
+    region: frankfurt
+    plan: free
+    rootDir: web
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://barberflow-api.onrender.com
+
+# ── PostgreSQL ────────────────────────────────────────────────────
+databases:
+  - name: barberflow-db
+    databaseName: barberflow
+    user: barberflow
+    region: frankfurt
+    plan: free
