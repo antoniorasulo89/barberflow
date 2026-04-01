@@ -43,7 +43,6 @@ services:
   - type: web
     name: barberflow-web
     env: static
-    plan: free
     rootDir: web
     buildCommand: npm install && npm run build
     staticPublishPath: dist
