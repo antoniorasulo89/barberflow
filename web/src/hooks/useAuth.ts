@@ -18,6 +18,7 @@ export function useAuth() {
     const data = await authApi.login(slug, email, password);
     localStorage.setItem('accessToken', data.accessToken);
     localStorage.setItem('refreshToken', data.refreshToken);
+    localStorage.setItem('tenantSlug', slug);
     setAccessToken(data.accessToken);
     return data;
   }, []);
