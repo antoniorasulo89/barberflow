@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
+import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import DashboardLayout from './pages/DashboardLayout';
 import AgendaPage from './pages/AgendaPage';
@@ -9,8 +10,6 @@ import StaffPage from './pages/StaffPage';
 import ServicesPage from './pages/ServicesPage';
 import ClientPortalPage from './pages/ClientPortalPage';
 
-const DEFAULT_SLUG = import.meta.env.VITE_SLUG ?? 'barbershop-napoli';
-
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
   return isAuthenticated ? <>{children}</> : <Navigate to="/admin/login" replace />;
@@ -19,7 +18,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to={`/${DEFAULT_SLUG}`} replace />} />
+      <Route path="/" element={<LandingPage />} />
       <Route path="/admin/login" element={<LoginPage />} />
       <Route
         path="/admin"
