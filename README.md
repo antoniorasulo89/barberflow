@@ -1,35 +1,45 @@
 # BarberFlow
 
-**BarberFlow** è un sistema di prenotazione online per barbieri. Permette ai clienti di prenotare in autonomia, e al barbiere di gestire l'agenda, i clienti e i servizi da una dashboard dedicata.
+**BarberFlow** è una piattaforma SaaS multi-tenant per la gestione delle prenotazioni nei saloni di barbiere. I clienti prenotano online in autonomia; i titolari gestiscono agenda, staff e clienti da una dashboard dedicata.
 
 ---
 
-## Come funziona
+## Navigazione
 
-### Per i clienti
-
-Accedi alla pagina del tuo barbiere (es. `https://barberflow.it/barbershop-napoli`) e:
-
-1. **Prenota** — scegli il servizio, il barbiere, il giorno e l'orario disponibile
-2. **Inserisci nome e numero di telefono** per confermare
-3. **Gestisci le tue prenotazioni** — accedi con il tuo numero di telefono per vedere gli appuntamenti futuri e cancellarli se necessario
-
-Nessuna registrazione richiesta. Basta il numero di telefono.
+| URL | Cosa trovi |
+|-----|-----------|
+| `/` | Landing page del prodotto |
+| `/:slug` | Portale prenotazioni del salone (es. `/barbershop-napoli`) |
+| `/admin/login` | Login per i titolari |
+| `/admin/agenda` | Dashboard — Agenda |
+| `/admin/clients` | Dashboard — Clienti |
+| `/admin/staff` | Dashboard — Staff |
+| `/admin/services` | Dashboard — Servizi |
 
 ---
 
-### Per i barbieri (admin)
+## Per i clienti
 
-Accedi alla dashboard da `https://barberflow.it/admin/login` con email e password.
+Visita la pagina del salone (es. `https://tuodominio.it/barbershop-napoli`) e:
 
-Da qui puoi:
+1. **Prenota** — scegli il servizio, il professionista, la data e l'orario
+2. **Conferma** con nome e, opzionalmente, numero di telefono
+3. **Gestisci le prenotazioni** — inserisci il numero usato in fase di prenotazione per vedere e cancellare i tuoi appuntamenti
 
-| Sezione | Cosa puoi fare |
-|---------|----------------|
-| **Agenda** | Visualizza gli appuntamenti del giorno, della settimana o del mese. Esporta in PDF. |
-| **Clienti** | Vedi la lista clienti, cerca, consulta lo storico visite, elimina profili. |
-| **Staff** | Aggiungi o gestisci i barbieri, imposta gli orari di lavoro. |
-| **Servizi** | Crea e aggiorna i servizi offerti (nome, durata, prezzo). |
+Nessuna registrazione. Nessuna app da installare.
+
+---
+
+## Per i titolari (admin)
+
+Accedi da `/admin/login` con email e password.
+
+| Sezione | Funzionalità |
+|---------|-------------|
+| **Agenda** | Vista giorno, settimana o mese · Aggiorna stato appuntamenti · Esporta PDF |
+| **Clienti** | Lista con ricerca e filtri · Profilo con storico visite · Elimina cliente |
+| **Staff** | Gestione profili · Disponibilità settimanale per fascia oraria |
+| **Servizi** | Nome, durata, prezzo · Attiva/disattiva |
 
 ---
 
@@ -37,16 +47,13 @@ Da qui puoi:
 
 | Campo | Valore |
 |-------|--------|
-| Slug barbershop | `barbershop-napoli` |
-| Email admin | `admin@barbershop-napoli.it` |
-| Password admin | `admin1234` |
-
-Portale clienti: `/barbershop-napoli`
-Dashboard admin: `/admin/login`
+| ID salone | `barbershop-napoli` |
+| Email | `admin@barbershop-napoli.it` |
+| Password | `admin1234` |
 
 ---
 
-## Installazione (per sviluppatori)
+## Installazione
 
 ### Prerequisiti
 
@@ -64,22 +71,20 @@ docker-compose exec api npx prisma migrate dev
 docker-compose exec api npm run db:seed
 ```
 
-API disponibile su `http://localhost:3000`, frontend su `http://localhost:5173`.
+API su `http://localhost:3000`, frontend su `http://localhost:5173`.
 
 ### Avvio locale (sviluppo)
 
 ```bash
 # Backend
-cd api
-npm install
+cd api && npm install
 cp .env.example .env
 npx prisma migrate dev
 npm run db:seed
 npm run dev
 
-# Frontend (in un altro terminale)
-cd web
-npm install
+# Frontend (altro terminale)
+cd web && npm install
 cp .env.example .env
 npm run dev
 ```
@@ -88,16 +93,24 @@ npm run dev
 
 ## Variabili d'ambiente
 
-Crea `api/.env` partendo da `api/.env.example`. Le principali:
+Crea `api/.env` da `api/.env.example`:
 
 ```env
 DATABASE_URL           # PostgreSQL connection string
-JWT_SECRET             # Chiave segreta token di accesso
+JWT_SECRET             # Chiave segreta access token
 JWT_REFRESH_SECRET     # Chiave segreta refresh token
-STRIPE_SECRET_KEY      # (opzionale) Pagamenti online con Stripe
-TWILIO_ACCOUNT_SID     # (opzionale) Notifiche SMS con Twilio
-RESEND_API_KEY         # (opzionale) Notifiche email con Resend
-FRONTEND_URL           # URL del frontend (per CORS)
+CLIENT_JWT_SECRET      # Chiave segreta token clienti (portale)
+STRIPE_SECRET_KEY      # (opzionale) Pagamenti con Stripe
+TWILIO_ACCOUNT_SID     # (opzionale) SMS con Twilio
+RESEND_API_KEY         # (opzionale) Email con Resend
+FRONTEND_URL           # URL frontend per CORS
+```
+
+Variabile frontend (`web/.env`):
+
+```env
+VITE_API_URL=http://localhost:3000/api   # URL del backend
+VITE_SLUG=barbershop-napoli              # Slug di default (usato in sviluppo)
 ```
 
 ---
@@ -106,13 +119,12 @@ FRONTEND_URL           # URL del frontend (per CORS)
 
 | Layer | Tecnologia |
 |-------|-----------|
-| Backend | Node.js + Express + TypeScript |
-| Database | PostgreSQL + Prisma ORM |
-| Frontend | React 18 + Vite + TailwindCSS |
-| Auth | JWT (access 15min + refresh 7gg) |
+| Backend | Node.js · Express · TypeScript |
+| Database | PostgreSQL · Prisma ORM |
+| Frontend | React 18 · Vite · TailwindCSS |
+| Auth | JWT access (15 min) + refresh (7 gg) · token client (7 gg, solo telefono) |
 | Pagamenti | Stripe |
-| SMS | Twilio |
-| Email | Resend |
+| Notifiche | Twilio (SMS) · Resend (email) |
 | Deploy | Render.com |
 
 ---
@@ -121,17 +133,21 @@ FRONTEND_URL           # URL del frontend (per CORS)
 
 ```
 barberflow/
-├── api/                  # Backend (Express + TypeScript)
+├── api/                        # Backend (Express + TypeScript)
 │   ├── src/
-│   │   ├── routes/       # Endpoint REST
-│   │   ├── controllers/  # Logica delle richieste
-│   │   ├── services/     # Business logic
-│   │   └── middleware/   # Auth, tenant guard, error handler
-│   └── prisma/           # Schema DB e migrazioni
-└── web/                  # Frontend (React + Vite)
+│   │   ├── routes/             # public.ts, auth.ts, appointments.ts, ...
+│   │   ├── controllers/        # Logica per ogni risorsa
+│   │   ├── services/           # Business logic (availability, notifications...)
+│   │   └── middleware/         # auth, tenantGuard, errorHandler
+│   └── prisma/
+│       ├── schema.prisma       # Modelli DB (Tenant, Staff, Servizio, Cliente...)
+│       ├── migrations/         # Migrazioni SQL
+│       └── seed.ts             # Dati iniziali (idempotente via upsert)
+└── web/                        # Frontend (React + Vite)
     └── src/
-        ├── pages/        # Pagine (portale clienti, dashboard, agenda...)
-        ├── components/   # Componenti UI riutilizzabili
-        ├── api/          # Client HTTP con gestione token JWT
-        └── hooks/        # Hook React custom
+        ├── pages/              # LandingPage, ClientPortalPage, AgendaPage...
+        ├── components/         # Modal, StatusBadge, NewAppointmentModal...
+        ├── api/                # Axios client con refresh token automatico
+        ├── hooks/              # useAuth, useClientAuth
+        └── types/              # TypeScript interfaces
 ```
