@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import prisma from '../utils/prisma';
 import { notFound, unauthorized, badRequest } from '../utils/errors';
 import { getAvailableSlots } from '../services/availabilityService';
+import { scheduleAppointmentNotifications, sendCancellationNotification } from '../services/notificationService';
 
 const router = Router();
 
@@ -141,6 +142,7 @@ router.post('/:slug/book', async (req, res, next) => {
       include: { cliente: true, staff: true, servizio: true },
     });
 
+    await scheduleAppointmentNotifications(appuntamento.id, tenant.id, cliente, inizio);
     res.status(201).json(appuntamento);
   } catch (err) { next(err); }
 });
@@ -196,11 +198,9 @@ router.get('/:slug/client/appointments', async (req, res, next) => {
       where: {
         tenantId: tenant.id,
         clienteId,
-        stato: { in: ['pending', 'confirmed'] },
-        inizio: { gte: new Date() },
       },
       include: { staff: true, servizio: true },
-      orderBy: { inizio: 'asc' },
+      orderBy: { inizio: 'desc' },
     });
 
     res.json(appuntamenti);
@@ -215,6 +215,7 @@ router.delete('/:slug/client/appointments/:id', async (req, res, next) => {
 
     const app = await prisma.appuntamento.findFirst({
       where: { id: req.params.id, tenantId: tenant.id, clienteId },
+      include: { cliente: true },
     });
     if (!app) return next(notFound('Appuntamento'));
 
@@ -226,6 +227,10 @@ router.delete('/:slug/client/appointments/:id', async (req, res, next) => {
       where: { id: app.id },
       data: { stato: 'cancelled' },
     });
+
+    if (app.stato !== 'cancelled') {
+      await sendCancellationNotification(app.id, tenant.id, app.cliente);
+    }
 
     res.json({ success: true });
   } catch (err) { next(err); }

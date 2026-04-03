@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO, addDays } from 'date-fns';
@@ -36,6 +36,14 @@ const STEPS = [
   { id: 'data' as BookingStep, label: 'Data e ora' },
   { id: 'conferma' as BookingStep, label: 'Conferma' },
 ];
+
+const CLIENT_STATUS_LABELS: Record<Appuntamento['stato'], string> = {
+  pending: 'In attesa',
+  confirmed: 'Confermato',
+  done: 'Completato',
+  noshow: 'No-show',
+  cancelled: 'Cancellato',
+};
 
 function BookingSummary({ state }: { state: BookingState }) {
   const items = [
@@ -144,6 +152,11 @@ function BookingTab({ slug, onBooked }: { slug: string; onBooked: () => void }) 
         <p className="mt-3 text-sm leading-7 text-slate-600">
           Il tuo appuntamento e stato registrato correttamente. Qui sotto trovi il riepilogo con i dettagli principali.
         </p>
+        {(state.email || state.telefono) && (
+          <div className="mx-auto mt-4 max-w-md rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm leading-6 text-brand-900">
+            Se il workspace ha un canale attivo, useremo il contatto inserito per inviarti conferma e promemoria.
+          </div>
+        )}
         <div className="mx-auto mt-6 max-w-md rounded-3xl border border-slate-200 bg-slate-50 p-5 text-left">
           <div className="space-y-3 text-sm">
             <div className="flex justify-between gap-4">
@@ -484,13 +497,76 @@ function MyAppointmentsTab({ slug }: { slug: string }) {
     }
   }
 
+  const { upcomingAppointments, historyAppointments } = useMemo(() => {
+    const now = new Date();
+    const sorted = [...appointments].sort(
+      (a, b) => new Date(a.inizio).getTime() - new Date(b.inizio).getTime()
+    );
+
+    return {
+      upcomingAppointments: sorted.filter(
+        (appointment) =>
+          new Date(appointment.inizio) >= now &&
+          ['pending', 'confirmed'].includes(appointment.stato)
+      ),
+      historyAppointments: [...sorted]
+        .filter(
+          (appointment) =>
+            new Date(appointment.inizio) < now ||
+            ['done', 'noshow', 'cancelled'].includes(appointment.stato)
+        )
+        .reverse(),
+    };
+  }, [appointments]);
+
+  function AppointmentCard({
+    appointment,
+    showCancelAction,
+  }: {
+    appointment: Appuntamento;
+    showCancelAction: boolean;
+  }) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="font-semibold text-slate-950">{appointment.servizio?.nome}</div>
+              <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                {CLIENT_STATUS_LABELS[appointment.stato]}
+              </span>
+            </div>
+            <div className="mt-1 text-sm text-slate-500">{appointment.staff?.nome}</div>
+            <div className="mt-2 text-sm font-medium text-brand-700">
+              {format(parseISO(appointment.inizio), "d MMMM yyyy 'alle' HH:mm", { locale: it })}
+            </div>
+            <div className="mt-1 text-sm text-slate-600">Importo previsto: EUR {appointment.importo}</div>
+          </div>
+          {showCancelAction ? (
+            <button
+              onClick={() => setAppointmentToCancel(appointment)}
+              disabled={cancelMutation.isPending}
+              className="btn-secondary border-red-200 text-red-600 hover:bg-red-50"
+            >
+              Cancella prenotazione
+            </button>
+          ) : (
+            <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500">
+              Appuntamento archiviato nello storico
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="surface-panel p-6 sm:p-8">
         <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">Recupero prenotazioni</div>
         <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Rivedi o cancella i tuoi appuntamenti</h2>
         <p className="mt-2 text-sm leading-7 text-slate-600">
-          Inserisci il numero di telefono usato durante la prenotazione. Non serve un account: usiamo quel contatto per ritrovare il tuo storico attivo.
+          Inserisci il numero di telefono usato durante la prenotazione. Non serve un account: usiamo quel contatto per ritrovare appuntamenti in programma e storico recente.
         </p>
         <form onSubmit={handleLogin} className="mt-6 space-y-4">
           <div>
@@ -525,7 +601,7 @@ function MyAppointmentsTab({ slug }: { slug: string }) {
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">Area cliente</div>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Ciao, {nome}</h2>
             <p className="mt-1 text-sm leading-7 text-slate-600">
-              Qui trovi le prenotazioni in programma e puoi cancellarle in autonomia quando serve.
+              Qui trovi prenotazioni in programma e storico recente, cosi hai sempre un quadro chiaro dei tuoi appuntamenti.
             </p>
           </div>
           <button onClick={logout} className="btn-secondary">
@@ -537,31 +613,45 @@ function MyAppointmentsTab({ slug }: { slug: string }) {
           <div className="mt-6 rounded-2xl bg-slate-50 py-6 text-center text-sm text-slate-500">Caricamento delle prenotazioni...</div>
         ) : appointments.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
-            Nessuna prenotazione in programma. Se vuoi, puoi tornare alla tab di booking e fissarne una nuova in pochi passaggi.
+            Nessuna prenotazione trovata. Se vuoi, puoi tornare alla tab di booking e fissarne una nuova in pochi passaggi.
           </div>
         ) : (
-          <div className="mt-6 space-y-3">
-            {appointments.map((appointment) => (
-              <div key={appointment.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <div className="font-semibold text-slate-950">{appointment.servizio?.nome}</div>
-                    <div className="mt-1 text-sm text-slate-500">{appointment.staff?.nome}</div>
-                    <div className="mt-2 text-sm font-medium text-brand-700">
-                      {format(parseISO(appointment.inizio), "d MMMM yyyy 'alle' HH:mm", { locale: it })}
-                    </div>
-                    <div className="mt-1 text-sm text-slate-600">Importo previsto: EUR {appointment.importo}</div>
-                  </div>
-                  <button
-                    onClick={() => setAppointmentToCancel(appointment)}
-                    disabled={cancelMutation.isPending}
-                    className="btn-secondary border-red-200 text-red-600 hover:bg-red-50"
-                  >
-                    Cancella prenotazione
-                  </button>
-                </div>
+          <div className="mt-6 space-y-6">
+            <section>
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">In programma</h3>
+                <span className="text-sm text-slate-500">{upcomingAppointments.length} appuntamenti</span>
               </div>
-            ))}
+              {upcomingAppointments.length === 0 ? (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
+                  Nessun appuntamento futuro in programma.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {upcomingAppointments.map((appointment) => (
+                    <AppointmentCard key={appointment.id} appointment={appointment} showCancelAction />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section>
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Storico</h3>
+                <span className="text-sm text-slate-500">{historyAppointments.length} appuntamenti</span>
+              </div>
+              {historyAppointments.length === 0 ? (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
+                  Lo storico comparira qui dopo i primi appuntamenti completati o cancellati.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {historyAppointments.map((appointment) => (
+                    <AppointmentCard key={appointment.id} appointment={appointment} showCancelAction={false} />
+                  ))}
+                </div>
+              )}
+            </section>
           </div>
         )}
       </div>

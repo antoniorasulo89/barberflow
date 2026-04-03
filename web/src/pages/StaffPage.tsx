@@ -1,10 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { staffApi } from '../api';
 import { Staff } from '../types';
 import Modal from '../components/shared/Modal';
 
 const DAYS = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+const DEFAULT_SLOTS = [1, 2, 3, 4, 5, 6].flatMap((d) => [
+  { giornoSettimana: d, oraInizio: '09:00', oraFine: '13:00', attivo: true },
+  { giornoSettimana: d, oraInizio: '15:00', oraFine: '19:00', attivo: true },
+]);
 
 export default function StaffPage() {
   const qc = useQueryClient();
@@ -102,13 +106,11 @@ function ScheduleModal({ staff, onClose }: { staff: Staff; onClose: () => void }
 
   type SlotData = { giornoSettimana: number; oraInizio: string; oraFine: string; attivo: boolean };
 
-  const [slots, setSlots] = useState<SlotData[]>(() => {
-    if (schedule.length > 0) return schedule;
-    return [1, 2, 3, 4, 5, 6].flatMap((d) => [
-      { giornoSettimana: d, oraInizio: '09:00', oraFine: '13:00', attivo: true },
-      { giornoSettimana: d, oraInizio: '15:00', oraFine: '19:00', attivo: true },
-    ]);
-  });
+  const [slots, setSlots] = useState<SlotData[]>(DEFAULT_SLOTS);
+
+  useEffect(() => {
+    setSlots(schedule.length > 0 ? schedule : DEFAULT_SLOTS);
+  }, [schedule]);
 
   const saveMutation = useMutation({
     mutationFn: () => staffApi.updateSchedule(staff.id, slots),
@@ -130,8 +132,10 @@ function ScheduleModal({ staff, onClose }: { staff: Staff; onClose: () => void }
     <Modal title={`Disponibilità — ${staff.nome}`} onClose={onClose} size="lg">
       <div className="space-y-3">
         {days.map((day) => {
-          const daySlots = slots.filter((s) => s.giornoSettimana === day);
-          const active = daySlots.some((s) => s.attivo);
+          const daySlots = slots
+            .map((slot, index) => ({ slot, index }))
+            .filter(({ slot }) => slot.giornoSettimana === day);
+          const active = daySlots.some(({ slot }) => slot.attivo);
           return (
             <div key={day} className="flex items-center gap-4 py-2 border-b border-gray-100">
               <div className="w-8 text-sm font-medium text-gray-700">{DAYS[day]}</div>
@@ -142,8 +146,8 @@ function ScheduleModal({ staff, onClose }: { staff: Staff; onClose: () => void }
               >
                 <div className={`w-4 h-4 rounded-full bg-white mx-0.5 transition-transform ${active ? 'translate-x-5' : ''}`} />
               </button>
-              {active && daySlots.map((slot, idx) => (
-                <div key={idx} className="flex items-center gap-2 text-sm">
+              {active && daySlots.map(({ slot, index }) => (
+                <div key={`${day}-${index}`} className="flex items-center gap-2 text-sm">
                   <input
                     type="time"
                     className="input w-28 py-1"
@@ -151,7 +155,7 @@ function ScheduleModal({ staff, onClose }: { staff: Staff; onClose: () => void }
                     onChange={(e) =>
                       setSlots((prev) =>
                         prev.map((s, i) =>
-                          s.giornoSettimana === day && slots.indexOf(s) === slots.indexOf(slot)
+                          i === index
                             ? { ...s, oraInizio: e.target.value }
                             : s
                         )
@@ -165,8 +169,8 @@ function ScheduleModal({ staff, onClose }: { staff: Staff; onClose: () => void }
                     value={slot.oraFine}
                     onChange={(e) =>
                       setSlots((prev) =>
-                        prev.map((s) =>
-                          s === slot ? { ...s, oraFine: e.target.value } : s
+                        prev.map((s, i) =>
+                          i === index ? { ...s, oraFine: e.target.value } : s
                         )
                       )
                     }
