@@ -4,7 +4,8 @@ import jwt from 'jsonwebtoken';
 import prisma from '../utils/prisma';
 import { notFound, unauthorized, badRequest } from '../utils/errors';
 import { getAvailableSlots } from '../services/availabilityService';
-import { scheduleAppointmentNotifications } from '../services/notificationService';
+import { scheduleAppointmentNotifications, sendCancellationNotification } from '../services/notificationService';
+import { staffCanPerformService, tenantUsesStaffServiceAssignments } from '../services/staffCapabilityService';
 
 const router = Router();
 
@@ -31,11 +32,38 @@ router.get('/:slug/services', async (req, res, next) => {
 router.get('/:slug/staff', async (req, res, next) => {
   try {
     const tenant = await getTenant(req.params.slug);
+    const { serviceId } = z.object({
+      serviceId: z.string().optional(),
+    }).parse(req.query);
+
+    const usesAssignments = await tenantUsesStaffServiceAssignments(tenant.id);
     const staff = await prisma.staff.findMany({
-      where: { tenantId: tenant.id, attivo: true },
+      where: {
+        tenantId: tenant.id,
+        attivo: true,
+        ...(serviceId && usesAssignments
+          ? {
+              servizi: {
+                some: {
+                  servizioId: serviceId,
+                },
+              },
+            }
+          : {}),
+      },
+      include: {
+        servizi: {
+          include: {
+            servizio: true,
+          },
+        },
+      },
       orderBy: { nome: 'asc' },
     });
-    res.json(staff);
+    res.json(staff.map((member) => ({
+      ...member,
+      servizi: member.servizi.map((entry) => entry.servizio),
+    })));
   } catch (err) { next(err); }
 });
 
@@ -58,6 +86,9 @@ router.get('/:slug/availability', async (req, res, next) => {
       where: { id: staffId, tenantId: tenant.id, attivo: true },
     });
     if (!staff) return next(notFound('Staff'));
+
+    const canPerform = await staffCanPerformService(tenant.id, staffId, serviceId);
+    if (!canPerform) return next(badRequest('Questo professionista non esegue il servizio selezionato'));
 
     const slots = await getAvailableSlots(tenant.id, staffId, date, servizio.durataMini);
     res.json(slots);
@@ -87,6 +118,9 @@ router.post('/:slug/book', async (req, res, next) => {
       where: { id: data.staffId, tenantId: tenant.id, attivo: true },
     });
     if (!staff) return next(notFound('Staff'));
+
+    const canPerform = await staffCanPerformService(tenant.id, data.staffId, data.servizioId);
+    if (!canPerform) return next(badRequest('Questo professionista non esegue il servizio selezionato'));
 
     // Find or create client by phone/email
     let cliente = await prisma.cliente.findFirst({
@@ -142,9 +176,7 @@ router.post('/:slug/book', async (req, res, next) => {
       include: { cliente: true, staff: true, servizio: true },
     });
 
-    // Fire-and-forget: schedule confirmation + reminders for the client
-    scheduleAppointmentNotifications(appuntamento.id, tenant.id, cliente, inizio).catch(() => null);
-
+    await scheduleAppointmentNotifications(appuntamento.id, tenant.id, cliente, inizio);
     res.status(201).json(appuntamento);
   } catch (err) { next(err); }
 });
@@ -200,11 +232,9 @@ router.get('/:slug/client/appointments', async (req, res, next) => {
       where: {
         tenantId: tenant.id,
         clienteId,
-        stato: { in: ['pending', 'confirmed'] },
-        inizio: { gte: new Date() },
       },
       include: { staff: true, servizio: true },
-      orderBy: { inizio: 'asc' },
+      orderBy: { inizio: 'desc' },
     });
 
     res.json(appuntamenti);
@@ -219,6 +249,7 @@ router.delete('/:slug/client/appointments/:id', async (req, res, next) => {
 
     const app = await prisma.appuntamento.findFirst({
       where: { id: req.params.id, tenantId: tenant.id, clienteId },
+      include: { cliente: true },
     });
     if (!app) return next(notFound('Appuntamento'));
 
@@ -230,6 +261,10 @@ router.delete('/:slug/client/appointments/:id', async (req, res, next) => {
       where: { id: app.id },
       data: { stato: 'cancelled' },
     });
+
+    if (app.stato !== 'cancelled') {
+      await sendCancellationNotification(app.id, tenant.id, app.cliente);
+    }
 
     res.json({ success: true });
   } catch (err) { next(err); }

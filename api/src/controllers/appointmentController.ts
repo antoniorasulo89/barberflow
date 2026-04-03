@@ -4,6 +4,7 @@ import prisma from '../utils/prisma';
 import { notFound, badRequest } from '../utils/errors';
 import { scheduleAppointmentNotifications } from '../services/notificationService';
 import { sendCancellationNotification } from '../services/notificationService';
+import { staffCanPerformService } from '../services/staffCapabilityService';
 
 const createSchema = z.object({
   clienteId: z.string(),
@@ -85,6 +86,9 @@ export async function createAppointment(req: Request, res: Response, next: NextF
       where: { id: data.staffId, tenantId, attivo: true },
     });
     if (!staff) return next(notFound('Staff'));
+
+    const canPerform = await staffCanPerformService(tenantId, data.staffId, data.servizioId);
+    if (!canPerform) return next(badRequest('Questo professionista non esegue il servizio selezionato'));
 
     const cliente = await prisma.cliente.findFirst({
       where: { id: data.clienteId, tenantId },

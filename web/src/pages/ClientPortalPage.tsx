@@ -82,8 +82,13 @@ function BookingTab({ slug, onBooked }: { slug: string; onBooked: () => void }) 
   });
 
   const { data: staffList = [] } = useQuery<Staff[]>({
-    queryKey: ['public-staff', slug],
-    queryFn: () => publicFetch(slug, 'staff'),
+    queryKey: ['public-staff', slug, state.servizio?.id ?? 'all'],
+    queryFn: () =>
+      publicFetch(
+        slug,
+        'staff',
+        state.servizio ? { serviceId: state.servizio.id } : undefined
+      ),
   });
 
   const { data: slots = [], isFetching: loadingSlots } = useQuery<Slot[]>({
@@ -238,7 +243,7 @@ function BookingTab({ slug, onBooked }: { slug: string; onBooked: () => void }) 
                 <button
                   key={servizio.id}
                   onClick={() => {
-                    setState((current) => ({ ...current, servizio }));
+                    setState((current) => ({ ...current, servizio, staff: null, slot: null }));
                     setStep('barbiere');
                   }}
                   className="w-full rounded-2xl border border-slate-200 p-4 text-left transition-colors hover:border-brand-300 hover:bg-brand-50"
@@ -281,6 +286,11 @@ function BookingTab({ slug, onBooked }: { slug: string; onBooked: () => void }) 
                 </button>
               ))}
             </div>
+            {staffList.length === 0 && (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
+                Nessun professionista disponibile per questo servizio. Prova a scegliere un servizio diverso o aggiorna le assegnazioni staff.
+              </div>
+            )}
             <button onClick={() => setStep('servizio')} className="mt-5 text-sm font-medium text-slate-500 hover:text-slate-700">
               Torna ai servizi
             </button>

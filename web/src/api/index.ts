@@ -55,6 +55,10 @@ export const staffApi = {
     apiClient.get(`/staff/${id}/schedule`).then((r) => r.data),
   updateSchedule: (id: string, data: unknown[]) =>
     apiClient.put(`/staff/${id}/schedule`, data).then((r) => r.data),
+  getServices: (id: string) =>
+    apiClient.get(`/staff/${id}/services`).then((r) => r.data),
+  updateServices: (id: string, servizioIds: string[]) =>
+    apiClient.put(`/staff/${id}/services`, { servizioIds }).then((r) => r.data),
 };
 
 // Services

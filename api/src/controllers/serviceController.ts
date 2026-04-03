@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import prisma from '../utils/prisma';
 import { notFound } from '../utils/errors';
+import { assignServiceToAllStaff } from '../services/staffCapabilityService';
 
 const createSchema = z.object({
   nome: z.string().min(2),
@@ -31,6 +32,7 @@ export async function createService(req: Request, res: Response, next: NextFunct
     const servizio = await prisma.servizio.create({
       data: { ...data, tenantId: req.tenantId! },
     });
+    await assignServiceToAllStaff(req.tenantId!, servizio.id);
     res.status(201).json(servizio);
   } catch (err) {
     next(err);
