@@ -150,10 +150,8 @@ function ScheduleModal({ staff, onClose }: { staff: Staff; onClose: () => void }
                     value={slot.oraInizio}
                     onChange={(e) =>
                       setSlots((prev) =>
-                        prev.map((s, i) =>
-                          s.giornoSettimana === day && slots.indexOf(s) === slots.indexOf(slot)
-                            ? { ...s, oraInizio: e.target.value }
-                            : s
+                        prev.map((s) =>
+                          s === slot ? { ...s, oraInizio: e.target.value } : s
                         )
                       )
                     }

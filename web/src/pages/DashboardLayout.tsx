@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 const DEFAULT_SLUG = import.meta.env.VITE_SLUG ?? 'barbershop-napoli';
 
 const navItems = [
+  { to: '/admin', label: 'Panoramica', icon: 'Home', end: true },
   { to: '/admin/agenda', label: 'Agenda', icon: 'Agenda' },
   { to: '/admin/clients', label: 'Clienti', icon: 'Clienti' },
   { to: '/admin/staff', label: 'Staff', icon: 'Staff' },
@@ -64,6 +65,7 @@ export default function DashboardLayout() {
             <NavLink
               key={item.to}
               to={item.to}
+              end={item.end}
               onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors ${

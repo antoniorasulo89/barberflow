@@ -3,6 +3,7 @@ import { useAuth } from './hooks/useAuth';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import DashboardLayout from './pages/DashboardLayout';
+import AdminHomePage from './pages/AdminHomePage';
 import AgendaPage from './pages/AgendaPage';
 import ClientsPage from './pages/ClientsPage';
 import ClientDetailPage from './pages/ClientDetailPage';
@@ -30,7 +31,7 @@ export default function App() {
           </PrivateRoute>
         }
       >
-        <Route index element={<Navigate to="/admin/agenda" replace />} />
+        <Route index element={<AdminHomePage />} />
         <Route path="agenda" element={<AgendaPage />} />
         <Route path="clients" element={<ClientsPage />} />
         <Route path="clients/:id" element={<ClientDetailPage />} />

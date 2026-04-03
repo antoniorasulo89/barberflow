@@ -8,6 +8,8 @@ export default function ServicesPage() {
   const qc = useQueryClient();
   const [showNew, setShowNew] = useState(false);
   const [newForm, setNewForm] = useState({ nome: '', durataMini: 30, prezzo: 0 });
+  const [editService, setEditService] = useState<Servizio | null>(null);
+  const [editForm, setEditForm] = useState({ nome: '', durataMini: 30, prezzo: 0 });
 
   const { data: servizi = [], isLoading } = useQuery<Servizio[]>({
     queryKey: ['services'],
@@ -25,6 +27,19 @@ export default function ServicesPage() {
       qc.invalidateQueries({ queryKey: ['services'] });
       setShowNew(false);
       setNewForm({ nome: '', durataMini: 30, prezzo: 0 });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: () =>
+      servicesApi.update(editService!.id, {
+        nome: editForm.nome,
+        durataMini: Number(editForm.durataMini),
+        prezzo: Number(editForm.prezzo),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['services'] });
+      setEditService(null);
     },
   });
 
@@ -54,16 +69,27 @@ export default function ServicesPage() {
                 </div>
                 <div className="text-lg font-bold text-brand-600">€{s.prezzo}</div>
               </div>
-              <button
-                onClick={() => toggleMutation.mutate({ id: s.id, attivo: !s.attivo })}
-                className={`text-sm px-3 py-1.5 rounded-lg border font-medium transition-colors ${
-                  s.attivo
-                    ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
-                    : 'border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100'
-                }`}
-              >
-                {s.attivo ? '✓ Attivo' : 'Disattivato'}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => toggleMutation.mutate({ id: s.id, attivo: !s.attivo })}
+                  className={`flex-1 text-sm px-3 py-1.5 rounded-lg border font-medium transition-colors ${
+                    s.attivo
+                      ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
+                      : 'border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100'
+                  }`}
+                >
+                  {s.attivo ? '✓ Attivo' : 'Disattivato'}
+                </button>
+                <button
+                  onClick={() => {
+                    setEditService(s);
+                    setEditForm({ nome: s.nome, durataMini: s.durataMini, prezzo: s.prezzo });
+                  }}
+                  className="text-sm px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 font-medium transition-colors"
+                >
+                  ✏ Modifica
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -88,6 +114,31 @@ export default function ServicesPage() {
               <button type="button" onClick={() => setShowNew(false)} className="btn-secondary flex-1">Annulla</button>
               <button type="submit" className="btn-primary flex-1" disabled={createMutation.isPending}>
                 {createMutation.isPending ? 'Creazione...' : 'Crea'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {editService !== null && (
+        <Modal title="Modifica servizio" onClose={() => setEditService(null)} size="sm">
+          <form onSubmit={(e) => { e.preventDefault(); updateMutation.mutate(); }} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+              <input className="input" value={editForm.nome} onChange={(e) => setEditForm((f) => ({ ...f, nome: e.target.value }))} required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Durata (minuti) *</label>
+              <input className="input" type="number" min={5} value={editForm.durataMini} onChange={(e) => setEditForm((f) => ({ ...f, durataMini: Number(e.target.value) }))} required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Prezzo (€) *</label>
+              <input className="input" type="number" min={0} step={0.5} value={editForm.prezzo} onChange={(e) => setEditForm((f) => ({ ...f, prezzo: Number(e.target.value) }))} required />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={() => setEditService(null)} className="btn-secondary flex-1">Annulla</button>
+              <button type="submit" className="btn-primary flex-1" disabled={updateMutation.isPending}>
+                {updateMutation.isPending ? 'Salvataggio...' : 'Salva'}
               </button>
             </div>
           </form>
