@@ -167,23 +167,122 @@ export default function AgendaPage() {
   }
 
   // ── Day View ──────────────────────────────────────────────────────────────
+  function MobileDayList() {
+    const sorted = [...appointments].sort(
+      (a, b) => new Date(a.inizio).getTime() - new Date(b.inizio).getTime()
+    );
+    const colors = APP_COLORS;
+    return (
+      <div className="p-3 space-y-2">
+        {sorted.length === 0 ? (
+          <div className="rounded-2xl bg-gray-50 py-12 text-center text-sm text-gray-400">
+            Nessun appuntamento per questo giorno.
+          </div>
+        ) : sorted.map((app) => {
+          const c = colors[app.stato] ?? colors.pending;
+          return (
+            <button
+              key={app.id}
+              onClick={() => setSelected(app)}
+              className="w-full flex items-start gap-3 rounded-2xl border bg-white p-3 text-left hover:border-brand-300 transition-colors"
+              style={{ borderLeftColor: c.border, borderLeftWidth: '3px' }}
+            >
+              <div className="flex-shrink-0 rounded-lg bg-brand-50 px-2 py-1 text-xs font-bold text-brand-700 tabular-nums">
+                {format(parseISO(app.inizio), 'HH:mm')}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-sm text-gray-900 truncate">{app.cliente?.nome}</div>
+                <div className="text-xs text-gray-500 truncate">{app.servizio?.nome} · {app.staff?.nome}</div>
+              </div>
+              <div className="flex-shrink-0 text-sm font-semibold text-gray-700">€{app.importo}</div>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   function DayView() {
     return (
-      <div className="flex min-w-max">
-        <TimeColumn />
-        {staffList.map((staff) => (
-          <div key={staff.id} className="flex-1 min-w-48 border-r border-gray-200">
-            <div className="h-12 border-b border-gray-200 px-3 flex items-center bg-white sticky top-0 z-10">
-              <div>
-                <div className="text-sm font-semibold text-gray-900">{staff.nome}</div>
-                <div className="text-xs text-gray-400">{staff.ruolo}</div>
+      <>
+        <div className="md:hidden flex-1 overflow-auto"><MobileDayList /></div>
+        <div className="hidden md:flex min-w-max">
+          <TimeColumn />
+          {staffList.map((staff) => (
+            <div key={staff.id} className="flex-1 min-w-48 border-r border-gray-200">
+              <div className="h-12 border-b border-gray-200 px-3 flex items-center bg-white sticky top-0 z-10">
+                <div>
+                  <div className="text-sm font-semibold text-gray-900">{staff.nome}</div>
+                  <div className="text-xs text-gray-400">{staff.ruolo}</div>
+                </div>
+              </div>
+              <div className="relative bg-gray-50" style={{ height: '660px' }}>
+                {HOURS.map((h) => <div key={h} className="absolute w-full border-t border-gray-100" style={{ top: `${((h - 8) / 11) * 100}%` }} />)}
+                {appointments.filter((a) => a.staffId === staff.id).map((app) => (
+                  <AppCard key={app.id} app={app} />
+                ))}
               </div>
             </div>
-            <div className="relative bg-gray-50" style={{ height: '660px' }}>
-              {HOURS.map((h) => <div key={h} className="absolute w-full border-t border-gray-100" style={{ top: `${((h - 8) / 11) * 100}%` }} />)}
-              {appointments.filter((a) => a.staffId === staff.id).map((app) => (
-                <AppCard key={app.id} app={app} />
-              ))}
+          ))}
+        </div>
+      </>
+    );
+  }
+
+  // ── Week View ─────────────────────────────────────────────────────────────
+  function MobileWeekList() {
+    const weekDays = eachDayOfInterval({
+      start: startOfWeek(date, { weekStartsOn: 1 }),
+      end: endOfWeek(date, { weekStartsOn: 1 }),
+    });
+    const colors = APP_COLORS;
+    const daysWithApps = weekDays
+      .map((day) => ({
+        day,
+        apps: [...appointments]
+          .filter((a) => isSameDay(parseISO(a.inizio), day))
+          .sort((a, b) => new Date(a.inizio).getTime() - new Date(b.inizio).getTime()),
+      }))
+      .filter(({ apps }) => apps.length > 0);
+
+    if (daysWithApps.length === 0) {
+      return (
+        <div className="p-3">
+          <div className="rounded-2xl bg-gray-50 py-12 text-center text-sm text-gray-400">
+            Nessun appuntamento per questa settimana.
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="p-3 space-y-4">
+        {daysWithApps.map(({ day, apps }) => (
+          <div key={day.toISOString()}>
+            <div className={`text-xs font-semibold uppercase mb-2 px-1 ${isToday(day) ? 'text-brand-600' : 'text-gray-500'}`}>
+              {format(day, 'EEE d MMM', { locale: it })}
+            </div>
+            <div className="space-y-2">
+              {apps.map((app) => {
+                const c = colors[app.stato] ?? colors.pending;
+                return (
+                  <button
+                    key={app.id}
+                    onClick={() => setSelected(app)}
+                    className="w-full flex items-start gap-3 rounded-2xl border bg-white p-3 text-left hover:border-brand-300 transition-colors"
+                    style={{ borderLeftColor: c.border, borderLeftWidth: '3px' }}
+                  >
+                    <div className="flex-shrink-0 rounded-lg bg-brand-50 px-2 py-1 text-xs font-bold text-brand-700 tabular-nums">
+                      {format(parseISO(app.inizio), 'HH:mm')}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm text-gray-900 truncate">{app.cliente?.nome}</div>
+                      <div className="text-xs text-gray-500 truncate">{app.servizio?.nome} · {app.staff?.nome}</div>
+                    </div>
+                    <div className="flex-shrink-0 text-sm font-semibold text-gray-700">€{app.importo}</div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         ))}
@@ -191,36 +290,38 @@ export default function AgendaPage() {
     );
   }
 
-  // ── Week View ─────────────────────────────────────────────────────────────
   function WeekView() {
     const weekDays = eachDayOfInterval({
       start: startOfWeek(date, { weekStartsOn: 1 }),
       end: endOfWeek(date, { weekStartsOn: 1 }),
     });
     return (
-      <div className="flex min-w-max">
-        <TimeColumn />
-        {weekDays.map((day) => {
-          const dayApps = appointments.filter((a) => isSameDay(parseISO(a.inizio), day));
-          const today = isToday(day);
-          return (
-            <div key={day.toISOString()} className="flex-1 min-w-32 border-r border-gray-200">
-              <div className={`h-12 border-b border-gray-200 px-2 flex flex-col justify-center sticky top-0 z-10 ${today ? 'bg-brand-50' : 'bg-white'}`}>
-                <div className={`text-xs font-medium uppercase ${today ? 'text-brand-600' : 'text-gray-400'}`}>
-                  {format(day, 'EEE', { locale: it })}
+      <>
+        <div className="md:hidden flex-1 overflow-auto"><MobileWeekList /></div>
+        <div className="hidden md:flex min-w-max">
+          <TimeColumn />
+          {weekDays.map((day) => {
+            const dayApps = appointments.filter((a) => isSameDay(parseISO(a.inizio), day));
+            const today = isToday(day);
+            return (
+              <div key={day.toISOString()} className="flex-1 min-w-32 border-r border-gray-200">
+                <div className={`h-12 border-b border-gray-200 px-2 flex flex-col justify-center sticky top-0 z-10 ${today ? 'bg-brand-50' : 'bg-white'}`}>
+                  <div className={`text-xs font-medium uppercase ${today ? 'text-brand-600' : 'text-gray-400'}`}>
+                    {format(day, 'EEE', { locale: it })}
+                  </div>
+                  <div className={`text-sm font-bold ${today ? 'text-brand-600' : 'text-gray-900'}`}>
+                    {format(day, 'd MMM', { locale: it })}
+                  </div>
                 </div>
-                <div className={`text-sm font-bold ${today ? 'text-brand-600' : 'text-gray-900'}`}>
-                  {format(day, 'd MMM', { locale: it })}
+                <div className="relative bg-gray-50" style={{ height: '660px' }}>
+                  {HOURS.map((h) => <div key={h} className="absolute w-full border-t border-gray-100" style={{ top: `${((h - 8) / 11) * 100}%` }} />)}
+                  {dayApps.map((app) => <AppCard key={app.id} app={app} compact />)}
                 </div>
               </div>
-              <div className="relative bg-gray-50" style={{ height: '660px' }}>
-                {HOURS.map((h) => <div key={h} className="absolute w-full border-t border-gray-100" style={{ top: `${((h - 8) / 11) * 100}%` }} />)}
-                {dayApps.map((app) => <AppCard key={app.id} app={app} compact />)}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      </>
     );
   }
 

@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import prisma from '../utils/prisma';
 import { notFound, unauthorized, badRequest } from '../utils/errors';
 import { getAvailableSlots } from '../services/availabilityService';
+import { scheduleAppointmentNotifications } from '../services/notificationService';
 
 const router = Router();
 
@@ -140,6 +141,9 @@ router.post('/:slug/book', async (req, res, next) => {
       },
       include: { cliente: true, staff: true, servizio: true },
     });
+
+    // Fire-and-forget: schedule confirmation + reminders for the client
+    scheduleAppointmentNotifications(appuntamento.id, tenant.id, cliente, inizio).catch(() => null);
 
     res.status(201).json(appuntamento);
   } catch (err) { next(err); }
