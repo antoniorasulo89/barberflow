@@ -168,41 +168,25 @@ export default function AgendaPage() {
 
   // ── Day View ──────────────────────────────────────────────────────────────
   function DayView() {
-    const dayTotal = appointments.length;
     return (
-      <div>
-        {dayTotal === 0 && (
-          <div className="flex items-center gap-2 px-6 py-3 bg-gray-50 border-b border-gray-100 text-sm text-gray-400">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4 flex-shrink-0">
-              <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
-            Nessun appuntamento per questo giorno
-          </div>
-        )}
-        <div className="flex min-w-max">
-          <TimeColumn />
-          {staffList.map((staff) => (
-            <div key={staff.id} className="flex-1 min-w-48 border-r border-gray-200">
-              <div className="h-12 border-b border-gray-200 px-3 flex items-center bg-white sticky top-0 z-10">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold text-xs flex-shrink-0">
-                    {staff.nome.charAt(0)}
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold text-gray-900">{staff.nome}</div>
-                    <div className="text-xs text-gray-400 capitalize">{staff.ruolo}</div>
-                  </div>
-                </div>
-              </div>
-              <div className="relative bg-gray-50" style={{ height: '660px' }}>
-                {HOURS.map((h) => <div key={h} className="absolute w-full border-t border-gray-100" style={{ top: `${((h - 8) / 11) * 100}%` }} />)}
-                {appointments.filter((a) => a.staffId === staff.id).map((app) => (
-                  <AppCard key={app.id} app={app} />
-                ))}
+      <div className="flex min-w-max">
+        <TimeColumn />
+        {staffList.map((staff) => (
+          <div key={staff.id} className="flex-1 min-w-48 border-r border-gray-200">
+            <div className="h-12 border-b border-gray-200 px-3 flex items-center bg-white sticky top-0 z-10">
+              <div>
+                <div className="text-sm font-semibold text-gray-900">{staff.nome}</div>
+                <div className="text-xs text-gray-400">{staff.ruolo}</div>
               </div>
             </div>
-          ))}
-        </div>
+            <div className="relative bg-gray-50" style={{ height: '660px' }}>
+              {HOURS.map((h) => <div key={h} className="absolute w-full border-t border-gray-100" style={{ top: `${((h - 8) / 11) * 100}%` }} />)}
+              {appointments.filter((a) => a.staffId === staff.id).map((app) => (
+                <AppCard key={app.id} app={app} />
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
@@ -336,15 +320,8 @@ export default function AgendaPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={exportPDF} className="btn-secondary text-sm flex items-center gap-1.5">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-                <line x1="16" y1="13" x2="8" y2="13"/>
-                <line x1="16" y1="17" x2="8" y2="17"/>
-                <polyline points="10 9 9 9 8 9"/>
-              </svg>
-              Esporta PDF
+            <button onClick={exportPDF} className="btn-secondary text-sm">
+              📄 Esporta PDF
             </button>
             <button onClick={() => setShowNew(true)} className="btn-primary">
               + Nuovo appuntamento
@@ -355,13 +332,7 @@ export default function AgendaPage() {
 
       {/* Content */}
       {isLoading ? (
-        <div className="flex-1 flex items-center justify-center gap-2 text-gray-400">
-          <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
-          </svg>
-          Caricamento agenda...
-        </div>
+        <div className="flex-1 flex items-center justify-center text-gray-400">Caricamento...</div>
       ) : view === 'month' ? (
         <div className="flex-1 overflow-auto"><MonthView /></div>
       ) : (
