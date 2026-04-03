@@ -5,6 +5,7 @@ import { format, parseISO, addDays } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { Servizio, Staff, Slot, Appuntamento } from '../types';
 import { useClientAuth } from '../hooks/useClientAuth';
+import Modal from '../components/shared/Modal';
 
 const API = import.meta.env.VITE_API_URL ?? '/api';
 
@@ -16,8 +17,6 @@ function publicFetch(slug: string, path: string, params?: Record<string, string>
     return r.json();
   });
 }
-
-// ─── Booking Tab ─────────────────────────────────────────────────────────────
 
 type BookingStep = 'servizio' | 'barbiere' | 'data' | 'conferma' | 'done';
 
@@ -33,17 +32,48 @@ interface BookingState {
 
 const STEPS = [
   { id: 'servizio' as BookingStep, label: 'Servizio' },
-  { id: 'barbiere' as BookingStep, label: 'Barbiere' },
-  { id: 'data' as BookingStep, label: 'Data & Ora' },
+  { id: 'barbiere' as BookingStep, label: 'Professionista' },
+  { id: 'data' as BookingStep, label: 'Data e ora' },
   { id: 'conferma' as BookingStep, label: 'Conferma' },
 ];
+
+function BookingSummary({ state }: { state: BookingState }) {
+  const items = [
+    ['Servizio', state.servizio ? `${state.servizio.nome} · ${state.servizio.durataMini} min` : 'Da scegliere'],
+    ['Professionista', state.staff?.nome ?? 'Da scegliere'],
+    ['Quando', state.slot ? format(parseISO(state.slot.inizio), "d MMMM yyyy 'alle' HH:mm", { locale: it }) : state.date ? format(parseISO(`${state.date}T00:00:00`), 'd MMMM yyyy', { locale: it }) : 'Da scegliere'],
+    ['Prezzo', state.servizio ? `EUR ${state.servizio.prezzo}` : 'Da definire'],
+  ];
+
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-slate-950 p-5 text-white shadow-xl shadow-slate-950/10">
+      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">Riepilogo live</div>
+      <div className="mt-3 text-lg font-semibold">Prenotazione semplice e trasparente</div>
+      <div className="mt-5 space-y-3">
+        {items.map(([label, value]) => (
+          <div key={label} className="flex items-start justify-between gap-4 border-b border-white/10 pb-3 last:border-b-0 last:pb-0">
+            <div className="text-sm text-white/55">{label}</div>
+            <div className="max-w-[65%] text-right text-sm font-medium text-white/90">{value}</div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-5 rounded-2xl bg-white/8 p-4 text-sm leading-6 text-white/75">
+        Nessuna registrazione obbligatoria. Confermi in pochi passaggi e puoi rivedere o cancellare gli appuntamenti in autonomia.
+      </div>
+    </div>
+  );
+}
 
 function BookingTab({ slug, onBooked }: { slug: string; onBooked: () => void }) {
   const [step, setStep] = useState<BookingStep>('servizio');
   const [state, setState] = useState<BookingState>({
-    servizio: null, staff: null,
+    servizio: null,
+    staff: null,
     date: format(new Date(), 'yyyy-MM-dd'),
-    slot: null, nome: '', telefono: '', email: '',
+    slot: null,
+    nome: '',
+    telefono: '',
+    email: '',
   });
 
   const { data: servizi = [], isError } = useQuery<Servizio[]>({
@@ -58,11 +88,12 @@ function BookingTab({ slug, onBooked }: { slug: string; onBooked: () => void }) 
 
   const { data: slots = [], isFetching: loadingSlots } = useQuery<Slot[]>({
     queryKey: ['public-slots', slug, state.staff?.id, state.date, state.servizio?.id],
-    queryFn: () => publicFetch(slug, 'availability', {
-      staffId: state.staff!.id,
-      date: state.date,
-      serviceId: state.servizio!.id,
-    }),
+    queryFn: () =>
+      publicFetch(slug, 'availability', {
+        staffId: state.staff!.id,
+        date: state.date,
+        serviceId: state.servizio!.id,
+      }),
     enabled: !!state.staff && !!state.servizio && step === 'data',
   });
 
@@ -87,32 +118,66 @@ function BookingTab({ slug, onBooked }: { slug: string; onBooked: () => void }) 
   });
 
   const availableSlots = slots.filter((s) => s.disponibile);
-  const currentStepIdx = STEPS.findIndex((s) => s.id === step);
+  const currentStepIdx = STEPS.findIndex((item) => item.id === step);
 
   if (isError) {
     return (
-      <div className="text-center py-8">
-        <div className="text-3xl mb-2">❌</div>
-        <p className="text-gray-500 text-sm">Barbershop non trovato.</p>
+      <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-center">
+        <h2 className="text-lg font-semibold text-red-900">Workspace non disponibile</h2>
+        <p className="mt-2 text-sm leading-6 text-red-700">
+          Questo link non risulta attivo. Controlla l&apos;indirizzo oppure torna alla home del prodotto.
+        </p>
+        <Link to="/" className="btn-secondary mt-4">
+          Torna a BarberFlow
+        </Link>
       </div>
     );
   }
 
   if (step === 'done') {
     return (
-      <div className="text-center py-4">
-        <div className="text-5xl mb-4">✅</div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Prenotazione confermata!</h2>
-        <p className="text-gray-600 mb-1">
-          <strong>{state.servizio?.nome}</strong> con <strong>{state.staff?.nome}</strong>
+      <div className="rounded-[32px] border border-emerald-200 bg-white p-8 text-center shadow-lg">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">
+          OK
+        </div>
+        <h2 className="mt-5 text-3xl font-semibold tracking-tight text-slate-950">Prenotazione confermata</h2>
+        <p className="mt-3 text-sm leading-7 text-slate-600">
+          Il tuo appuntamento e stato registrato correttamente. Qui sotto trovi il riepilogo con i dettagli principali.
         </p>
-        <p className="text-brand-600 font-semibold mb-6">
-          {state.slot && format(parseISO(state.slot.inizio), "d MMMM yyyy 'alle' HH:mm", { locale: it })}
-        </p>
-        <div className="flex gap-3 justify-center flex-wrap">
+        <div className="mx-auto mt-6 max-w-md rounded-3xl border border-slate-200 bg-slate-50 p-5 text-left">
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between gap-4">
+              <span className="text-slate-500">Servizio</span>
+              <span className="font-medium text-slate-900">{state.servizio?.nome}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-slate-500">Professionista</span>
+              <span className="font-medium text-slate-900">{state.staff?.nome}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-slate-500">Data e ora</span>
+              <span className="text-right font-medium text-slate-900">
+                {state.slot && format(parseISO(state.slot.inizio), "d MMMM yyyy 'alle' HH:mm", { locale: it })}
+              </span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-slate-500">Contatto</span>
+              <span className="text-right font-medium text-slate-900">{state.telefono || state.email || 'Nessun contatto inserito'}</span>
+            </div>
+          </div>
+        </div>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
           <button
             onClick={() => {
-              setState({ servizio: null, staff: null, date: format(new Date(), 'yyyy-MM-dd'), slot: null, nome: '', telefono: '', email: '' });
+              setState({
+                servizio: null,
+                staff: null,
+                date: format(new Date(), 'yyyy-MM-dd'),
+                slot: null,
+                nome: '',
+                telefono: '',
+                email: '',
+              });
               setStep('servizio');
             }}
             className="btn-secondary"
@@ -120,181 +185,253 @@ function BookingTab({ slug, onBooked }: { slug: string; onBooked: () => void }) 
             Prenota di nuovo
           </button>
           <button onClick={onBooked} className="btn-primary">
-            Le mie prenotazioni →
+            Vedi le mie prenotazioni
           </button>
+          <Link to="/" className="btn-secondary">
+            Torna all&apos;inizio
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div>
-      {/* Stepper */}
-      <div className="flex items-center mb-6">
-        {STEPS.map((s, idx) => (
-          <div key={s.id} className="flex items-center flex-1 last:flex-none">
-            <div className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold flex-shrink-0 ${
-              idx < currentStepIdx ? 'bg-brand-500 text-white'
-              : idx === currentStepIdx ? 'bg-brand-500 text-white ring-4 ring-brand-100'
-              : 'bg-gray-100 text-gray-400'
-            }`}>
-              {idx < currentStepIdx ? '✓' : idx + 1}
+    <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+      <div className="surface-panel p-6 sm:p-8">
+        <div className="mb-6">
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">Prenotazione guidata</div>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Blocca il tuo slot in pochi passaggi</h2>
+          <p className="mt-2 text-sm leading-7 text-slate-600">
+            Scegli il servizio, seleziona chi preferisci e conferma il tuo appuntamento senza creare un account.
+          </p>
+        </div>
+
+        <div className="mb-8 flex items-center">
+          {STEPS.map((item, index) => (
+            <div key={item.id} className="flex flex-1 items-center last:flex-none">
+              <div
+                className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                  index < currentStepIdx
+                    ? 'bg-brand-500 text-white'
+                    : index === currentStepIdx
+                      ? 'bg-brand-500 text-white ring-4 ring-brand-100'
+                      : 'bg-slate-100 text-slate-400'
+                }`}
+              >
+                {index + 1}
+              </div>
+              <span className={`ml-2 hidden text-xs font-medium sm:inline ${index === currentStepIdx ? 'text-brand-700' : 'text-slate-400'}`}>
+                {item.label}
+              </span>
+              {index < STEPS.length - 1 && (
+                <div className={`mx-3 h-0.5 flex-1 ${index < currentStepIdx ? 'bg-brand-500' : 'bg-slate-100'}`} />
+              )}
             </div>
-            <span className={`text-xs font-medium ml-1 hidden sm:inline ${idx === currentStepIdx ? 'text-brand-600' : 'text-gray-400'}`}>
-              {s.label}
-            </span>
-            {idx < STEPS.length - 1 && (
-              <div className={`flex-1 h-0.5 mx-2 ${idx < currentStepIdx ? 'bg-brand-500' : 'bg-gray-100'}`} />
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Step 1 — Servizio */}
-      {step === 'servizio' && (
-        <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Scegli il servizio</h2>
-          <div className="space-y-2">
-            {servizi.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => { setState((f) => ({ ...f, servizio: s })); setStep('barbiere'); }}
-                className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-gray-200 hover:border-brand-400 hover:bg-brand-50 transition-colors text-left"
-              >
-                <div>
-                  <div className="font-semibold text-gray-900">{s.nome}</div>
-                  <div className="text-sm text-gray-500">{s.durataMini} min</div>
-                </div>
-                <div className="text-lg font-bold text-brand-600">€{s.prezzo}</div>
-              </button>
-            ))}
-          </div>
+          ))}
         </div>
-      )}
 
-      {/* Step 2 — Barbiere */}
-      {step === 'barbiere' && (
-        <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Scegli il barbiere</h2>
-          <div className="space-y-2">
-            {staffList.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => { setState((f) => ({ ...f, staff: s })); setStep('data'); }}
-                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 hover:border-brand-400 hover:bg-brand-50 transition-colors text-left"
-              >
-                <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold">
-                  {s.nome.charAt(0)}
-                </div>
-                <div>
-                  <div className="font-semibold text-gray-900">{s.nome}</div>
-                  <div className="text-sm text-gray-500">{s.ruolo}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-          <button onClick={() => setStep('servizio')} className="mt-4 text-sm text-gray-400 hover:text-gray-600">← Indietro</button>
-        </div>
-      )}
-
-      {/* Step 3 — Data & Ora */}
-      {step === 'data' && (
-        <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Scegli data e orario</h2>
-          <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
-            {Array.from({ length: 14 }, (_, i) => addDays(new Date(), i)).map((d) => {
-              const ds = format(d, 'yyyy-MM-dd');
-              return (
+        {step === 'servizio' && (
+          <div>
+            <h3 className="mb-4 text-lg font-semibold text-slate-950">Scegli il servizio</h3>
+            <div className="space-y-3">
+              {servizi.map((servizio) => (
                 <button
-                  key={ds}
-                  onClick={() => setState((f) => ({ ...f, date: ds, slot: null }))}
-                  className={`flex-shrink-0 flex flex-col items-center p-2 rounded-lg border-2 text-xs transition-colors ${
-                    state.date === ds
-                      ? 'border-brand-500 bg-brand-500 text-white'
-                      : 'border-gray-200 hover:border-brand-300 text-gray-700'
-                  }`}
+                  key={servizio.id}
+                  onClick={() => {
+                    setState((current) => ({ ...current, servizio }));
+                    setStep('barbiere');
+                  }}
+                  className="w-full rounded-2xl border border-slate-200 p-4 text-left transition-colors hover:border-brand-300 hover:bg-brand-50"
                 >
-                  <span className="uppercase font-medium">{format(d, 'EEE', { locale: it })}</span>
-                  <span className="text-lg font-bold">{format(d, 'd')}</span>
-                  <span className="opacity-75">{format(d, 'MMM', { locale: it })}</span>
-                </button>
-              );
-            })}
-          </div>
-          {loadingSlots ? (
-            <div className="text-center py-6 text-gray-400">Caricamento slot...</div>
-          ) : availableSlots.length > 0 ? (
-            <div className="grid grid-cols-4 gap-2">
-              {availableSlots.map((slot) => (
-                <button
-                  key={slot.inizio}
-                  onClick={() => setState((f) => ({ ...f, slot }))}
-                  className={`py-2.5 rounded-xl text-sm font-medium border-2 transition-colors ${
-                    state.slot?.inizio === slot.inizio
-                      ? 'bg-brand-500 text-white border-brand-500'
-                      : 'bg-white text-gray-700 border-gray-200 hover:border-brand-400'
-                  }`}
-                >
-                  {format(parseISO(slot.inizio), 'HH:mm')}
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <div className="font-semibold text-slate-950">{servizio.nome}</div>
+                      <div className="mt-1 text-sm text-slate-500">{servizio.durataMini} minuti</div>
+                    </div>
+                    <div className="text-sm font-semibold text-brand-700">EUR {servizio.prezzo}</div>
+                  </div>
                 </button>
               ))}
             </div>
-          ) : (
-            <div className="text-center py-6 text-gray-400 bg-gray-50 rounded-xl">
-              Nessuno slot disponibile per questa data
-            </div>
-          )}
-          <div className="flex gap-3 mt-6">
-            <button onClick={() => setStep('barbiere')} className="btn-secondary flex-1">← Indietro</button>
-            <button onClick={() => setStep('conferma')} disabled={!state.slot} className="btn-primary flex-1">Avanti →</button>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Step 4 — Conferma */}
-      {step === 'conferma' && (
-        <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-4">I tuoi dati</h2>
-          <div className="bg-brand-50 rounded-xl p-4 mb-5 text-sm space-y-1">
-            <div className="font-semibold text-brand-900 mb-1">Riepilogo</div>
-            <div className="text-brand-800">✂️ {state.servizio?.nome} — €{state.servizio?.prezzo}</div>
-            <div className="text-brand-800">💈 {state.staff?.nome}</div>
-            <div className="text-brand-800">
-              📅 {state.slot && format(parseISO(state.slot.inizio), "d MMMM yyyy 'alle' HH:mm", { locale: it })}
+        {step === 'barbiere' && (
+          <div>
+            <h3 className="mb-4 text-lg font-semibold text-slate-950">Seleziona il professionista</h3>
+            <div className="space-y-3">
+              {staffList.map((staff) => (
+                <button
+                  key={staff.id}
+                  onClick={() => {
+                    setState((current) => ({ ...current, staff }));
+                    setStep('data');
+                  }}
+                  className="w-full rounded-2xl border border-slate-200 p-4 text-left transition-colors hover:border-brand-300 hover:bg-brand-50"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700">
+                      {staff.nome.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-slate-950">{staff.nome}</div>
+                      <div className="text-sm text-slate-500">{staff.ruolo}</div>
+                    </div>
+                  </div>
+                </button>
+              ))}
             </div>
+            <button onClick={() => setStep('servizio')} className="mt-5 text-sm font-medium text-slate-500 hover:text-slate-700">
+              Torna ai servizi
+            </button>
           </div>
-          <form onSubmit={(e) => { e.preventDefault(); bookMutation.mutate(); }} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nome completo *</label>
-              <input className="input" value={state.nome} onChange={(e) => setState((f) => ({ ...f, nome: e.target.value }))} required />
+        )}
+
+        {step === 'data' && (
+          <div>
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-slate-950">Scegli data e orario</h3>
+              <p className="mt-1 text-sm text-slate-500">Disponibilita aggiornata in tempo reale, senza refresh manuali.</p>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Telefono</label>
-              <input className="input" type="tel" placeholder="+39 333 1234567" value={state.telefono} onChange={(e) => setState((f) => ({ ...f, telefono: e.target.value }))} />
+
+            <div className="mb-5 flex gap-2 overflow-x-auto pb-2">
+              {Array.from({ length: 14 }, (_, index) => addDays(new Date(), index)).map((day) => {
+                const dayString = format(day, 'yyyy-MM-dd');
+                const isSelected = state.date === dayString;
+                return (
+                  <button
+                    key={dayString}
+                    onClick={() => setState((current) => ({ ...current, date: dayString, slot: null }))}
+                    className={`flex-shrink-0 rounded-2xl border px-4 py-3 text-left transition-colors ${
+                      isSelected
+                        ? 'border-brand-500 bg-brand-500 text-white'
+                        : 'border-slate-200 bg-white text-slate-700 hover:border-brand-300'
+                    }`}
+                  >
+                    <div className="text-xs uppercase">{format(day, 'EEE', { locale: it })}</div>
+                    <div className="mt-1 text-lg font-semibold">{format(day, 'd')}</div>
+                    <div className="text-xs">{format(day, 'MMM', { locale: it })}</div>
+                  </button>
+                );
+              })}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input className="input" type="email" value={state.email} onChange={(e) => setState((f) => ({ ...f, email: e.target.value }))} />
-            </div>
-            {bookMutation.isError && (
-              <div className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">
-                {(bookMutation.error as { error?: string })?.error ?? 'Errore nella prenotazione. Riprova.'}
+
+            {loadingSlots ? (
+              <div className="rounded-2xl bg-slate-50 py-6 text-center text-sm text-slate-500">Caricamento degli slot disponibili...</div>
+            ) : availableSlots.length > 0 ? (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {availableSlots.map((slot) => (
+                  <button
+                    key={slot.inizio}
+                    onClick={() => setState((current) => ({ ...current, slot }))}
+                    className={`rounded-2xl border px-3 py-3 text-sm font-medium transition-colors ${
+                      state.slot?.inizio === slot.inizio
+                        ? 'border-brand-500 bg-brand-500 text-white'
+                        : 'border-slate-200 bg-white text-slate-700 hover:border-brand-300'
+                    }`}
+                  >
+                    {format(parseISO(slot.inizio), 'HH:mm')}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
+                Nessuno slot disponibile per questa data. Prova un altro giorno o scegli un professionista differente.
               </div>
             )}
-            <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => setStep('data')} className="btn-secondary flex-1">← Indietro</button>
-              <button type="submit" className="btn-primary flex-1" disabled={bookMutation.isPending}>
-                {bookMutation.isPending ? 'Prenotazione...' : 'Conferma'}
+
+            <div className="mt-6 flex gap-3">
+              <button onClick={() => setStep('barbiere')} className="btn-secondary flex-1">
+                Indietro
+              </button>
+              <button onClick={() => setStep('conferma')} disabled={!state.slot} className="btn-primary flex-1">
+                Continua
               </button>
             </div>
-          </form>
+          </div>
+        )}
+
+        {step === 'conferma' && (
+          <div>
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-slate-950">Conferma i tuoi dati</h3>
+              <p className="mt-1 text-sm text-slate-500">Ti contatteremo solo se serve aggiornare o ricordare l&apos;appuntamento.</p>
+            </div>
+
+            <div className="mb-5 rounded-2xl border border-brand-100 bg-brand-50 p-4 text-sm leading-6 text-brand-900">
+              <div className="font-semibold">Riepilogo appuntamento</div>
+              <div className="mt-2">{state.servizio?.nome} con {state.staff?.nome}</div>
+              <div>{state.slot && format(parseISO(state.slot.inizio), "d MMMM yyyy 'alle' HH:mm", { locale: it })}</div>
+            </div>
+
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                bookMutation.mutate();
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Nome completo</label>
+                <input
+                  className="input"
+                  value={state.nome}
+                  onChange={(event) => setState((current) => ({ ...current, nome: event.target.value }))}
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Telefono</label>
+                <input
+                  className="input"
+                  type="tel"
+                  placeholder="+39 333 1234567"
+                  value={state.telefono}
+                  onChange={(event) => setState((current) => ({ ...current, telefono: event.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
+                <input
+                  className="input"
+                  type="email"
+                  placeholder="nome@email.it"
+                  value={state.email}
+                  onChange={(event) => setState((current) => ({ ...current, email: event.target.value }))}
+                />
+              </div>
+              {bookMutation.isError && (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {(bookMutation.error as { error?: string })?.error ?? 'Errore nella prenotazione. Riprova tra qualche istante.'}
+                </div>
+              )}
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setStep('data')} className="btn-secondary flex-1">
+                  Indietro
+                </button>
+                <button type="submit" className="btn-primary flex-1" disabled={bookMutation.isPending}>
+                  {bookMutation.isPending ? 'Conferma in corso...' : 'Conferma appuntamento'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-5">
+        <BookingSummary state={state} />
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">Perche funziona</div>
+          <div className="mt-3 space-y-3 text-sm leading-6 text-slate-600">
+            <p>Prenotazione rapida, senza account obbligatorio e con disponibilita sempre aggiornata.</p>
+            <p>Copy chiaro e riepilogo sempre visibile per ridurre errori e abbandoni durante il flusso.</p>
+            <p>Conferma finale ordinata, con prossime azioni immediate e gestione autonoma dell&apos;appuntamento.</p>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
-
-// ─── My Appointments Tab ──────────────────────────────────────────────────────
 
 function MyAppointmentsTab({ slug }: { slug: string }) {
   const { token, nome, isAuthenticated, login, logout } = useClientAuth(slug);
@@ -302,6 +439,7 @@ function MyAppointmentsTab({ slug }: { slug: string }) {
   const [phone, setPhone] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
+  const [appointmentToCancel, setAppointmentToCancel] = useState<Appuntamento | null>(null);
 
   const { data: appointments = [], isLoading } = useQuery<Appuntamento[]>({
     queryKey: ['client-appointments', slug, token],
@@ -309,7 +447,10 @@ function MyAppointmentsTab({ slug }: { slug: string }) {
       fetch(`${API}/public/${slug}/client/appointments`, {
         headers: { Authorization: `Bearer ${token}` },
       }).then((r) => {
-        if (r.status === 401) { logout(); return []; }
+        if (r.status === 401) {
+          logout();
+          return [];
+        }
         return r.json();
       }),
     enabled: isAuthenticated,
@@ -321,17 +462,23 @@ function MyAppointmentsTab({ slug }: { slug: string }) {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       }).then((r) => r.json()),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['client-appointments', slug] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['client-appointments', slug] });
+      setAppointmentToCancel(null);
+    },
   });
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleLogin(event: React.FormEvent) {
+    event.preventDefault();
     setLoginError('');
     setLoginLoading(true);
     try {
       await login(phone);
-    } catch (err: unknown) {
-      setLoginError((err as { error?: string })?.error ?? 'Numero non trovato. Hai già effettuato prenotazioni?');
+    } catch (error: unknown) {
+      setLoginError(
+        (error as { error?: string })?.error ??
+          'Numero non riconosciuto. Inserisci lo stesso contatto usato per prenotare.'
+      );
     } finally {
       setLoginLoading(false);
     }
@@ -339,28 +486,31 @@ function MyAppointmentsTab({ slug }: { slug: string }) {
 
   if (!isAuthenticated) {
     return (
-      <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-2">Le mie prenotazioni</h2>
-        <p className="text-sm text-gray-500 mb-6">
-          Inserisci il numero di telefono usato durante la prenotazione.
+      <div className="surface-panel p-6 sm:p-8">
+        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">Recupero prenotazioni</div>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Rivedi o cancella i tuoi appuntamenti</h2>
+        <p className="mt-2 text-sm leading-7 text-slate-600">
+          Inserisci il numero di telefono usato durante la prenotazione. Non serve un account: usiamo quel contatto per ritrovare il tuo storico attivo.
         </p>
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleLogin} className="mt-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Numero di telefono</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Numero di telefono</label>
             <input
               className="input"
               type="tel"
               placeholder="+39 333 1234567"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(event) => setPhone(event.target.value)}
               required
             />
           </div>
           {loginError && (
-            <div className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{loginError}</div>
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {loginError}
+            </div>
           )}
           <button type="submit" className="btn-primary w-full" disabled={loginLoading}>
-            {loginLoading ? 'Ricerca...' : 'Vedi le mie prenotazioni →'}
+            {loginLoading ? 'Ricerca in corso...' : 'Vedi le mie prenotazioni'}
           </button>
         </form>
       </div>
@@ -368,114 +518,156 @@ function MyAppointmentsTab({ slug }: { slug: string }) {
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h2 className="text-lg font-bold text-gray-900">Ciao, {nome}!</h2>
-          <p className="text-sm text-gray-500">Le tue prossime prenotazioni</p>
+    <>
+      <div className="surface-panel p-6 sm:p-8">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">Area cliente</div>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Ciao, {nome}</h2>
+            <p className="mt-1 text-sm leading-7 text-slate-600">
+              Qui trovi le prenotazioni in programma e puoi cancellarle in autonomia quando serve.
+            </p>
+          </div>
+          <button onClick={logout} className="btn-secondary">
+            Esci
+          </button>
         </div>
-        <button onClick={logout} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
-          Esci
-        </button>
+
+        {isLoading ? (
+          <div className="mt-6 rounded-2xl bg-slate-50 py-6 text-center text-sm text-slate-500">Caricamento delle prenotazioni...</div>
+        ) : appointments.length === 0 ? (
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
+            Nessuna prenotazione in programma. Se vuoi, puoi tornare alla tab di booking e fissarne una nuova in pochi passaggi.
+          </div>
+        ) : (
+          <div className="mt-6 space-y-3">
+            {appointments.map((appointment) => (
+              <div key={appointment.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <div className="font-semibold text-slate-950">{appointment.servizio?.nome}</div>
+                    <div className="mt-1 text-sm text-slate-500">{appointment.staff?.nome}</div>
+                    <div className="mt-2 text-sm font-medium text-brand-700">
+                      {format(parseISO(appointment.inizio), "d MMMM yyyy 'alle' HH:mm", { locale: it })}
+                    </div>
+                    <div className="mt-1 text-sm text-slate-600">Importo previsto: EUR {appointment.importo}</div>
+                  </div>
+                  <button
+                    onClick={() => setAppointmentToCancel(appointment)}
+                    disabled={cancelMutation.isPending}
+                    className="btn-secondary border-red-200 text-red-600 hover:bg-red-50"
+                  >
+                    Cancella prenotazione
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {isLoading ? (
-        <div className="text-center py-8 text-gray-400">Caricamento...</div>
-      ) : appointments.length === 0 ? (
-        <div className="text-center py-10 bg-gray-50 rounded-xl">
-          <div className="text-3xl mb-2">📅</div>
-          <p className="text-gray-500 text-sm">Nessuna prenotazione in programma.</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {appointments.map((app) => (
-            <div key={app.id} className="border-2 border-gray-100 rounded-xl p-4 hover:border-gray-200 transition-colors">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="font-semibold text-gray-900">{app.servizio?.nome}</div>
-                  <div className="text-sm text-gray-500 mt-0.5">💈 {app.staff?.nome}</div>
-                  <div className="text-sm text-brand-600 font-medium mt-1">
-                    📅 {format(parseISO(app.inizio), "d MMMM yyyy 'alle' HH:mm", { locale: it })}
-                  </div>
-                  <div className="text-sm font-semibold text-gray-700 mt-0.5">€{app.importo}</div>
-                </div>
-                <button
-                  onClick={() => {
-                    if (confirm('Sei sicuro di voler cancellare questa prenotazione?')) {
-                      cancelMutation.mutate(app.id);
-                    }
-                  }}
-                  disabled={cancelMutation.isPending}
-                  className="text-xs text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors flex-shrink-0 border border-red-100 hover:border-red-200"
-                >
-                  Cancella
-                </button>
-              </div>
+      {appointmentToCancel && (
+        <Modal title="Conferma cancellazione" onClose={() => setAppointmentToCancel(null)} size="sm">
+          <div className="space-y-4 text-sm text-slate-600">
+            <p>
+              Stai per cancellare l&apos;appuntamento per <strong className="text-slate-900">{appointmentToCancel.servizio?.nome}</strong>.
+            </p>
+            <p>
+              {format(parseISO(appointmentToCancel.inizio), "d MMMM yyyy 'alle' HH:mm", { locale: it })}
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={() => setAppointmentToCancel(null)} className="btn-secondary flex-1">
+                Mantieni
+              </button>
+              <button
+                type="button"
+                onClick={() => cancelMutation.mutate(appointmentToCancel.id)}
+                className="btn-danger flex-1"
+                disabled={cancelMutation.isPending}
+              >
+                {cancelMutation.isPending ? 'Cancellazione...' : 'Conferma'}
+              </button>
             </div>
-          ))}
-        </div>
+          </div>
+        </Modal>
       )}
-    </div>
+    </>
   );
 }
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ClientPortalPage() {
   const { slug } = useParams<{ slug: string }>();
   const [activeTab, setActiveTab] = useState<'prenota' | 'miei'>('prenota');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-500 to-brand-800">
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-6 py-4 max-w-lg mx-auto">
-        <div className="flex items-center gap-2">
-          <span className="text-xl text-white">✂️</span>
-          <span className="text-white font-bold text-lg">BarberFlow</span>
+    <div className="min-h-screen bg-[linear-gradient(180deg,_#1f1408_0%,_#3d2912_24%,_#f4efe6_24%,_#f4efe6_100%)]">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-10">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <Link to="/" className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-sm font-semibold text-slate-900 shadow-lg shadow-black/10">
+              BF
+            </div>
+            <div>
+              <div className="text-lg font-semibold text-white">BarberFlow</div>
+              <div className="text-sm text-white/70">Prenotazioni e gestione appuntamenti senza attriti</div>
+            </div>
+          </Link>
+          <Link to="/admin/login" className="btn-secondary border-white/15 bg-white/10 text-white hover:bg-white/15">
+            Dashboard admin
+          </Link>
         </div>
-        <Link
-          to="/admin/login"
-          className="text-white/70 hover:text-white text-sm font-medium transition-colors"
-        >
-          Dashboard Admin →
-        </Link>
-      </div>
 
-      {/* Card */}
-      <div className="flex justify-center px-4 pb-10">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
-          {/* Tabs */}
-          <div className="flex border-b border-gray-100">
-            <button
-              onClick={() => setActiveTab('prenota')}
-              className={`flex-1 py-4 text-sm font-medium transition-colors ${
-                activeTab === 'prenota'
-                  ? 'text-brand-600 border-b-2 border-brand-500'
-                  : 'text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              ✂️ Prenota
-            </button>
-            <button
-              onClick={() => setActiveTab('miei')}
-              className={`flex-1 py-4 text-sm font-medium transition-colors ${
-                activeTab === 'miei'
-                  ? 'text-brand-600 border-b-2 border-brand-500'
-                  : 'text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              📅 Le mie prenotazioni
-            </button>
-          </div>
+        <div className="mt-10 grid gap-10 xl:grid-cols-[0.95fr_1.05fr]">
+          <section className="text-white">
+            <div className="inline-flex rounded-full border border-white/15 bg-white/10 px-4 py-1.5 text-sm backdrop-blur">
+              Esperienza cliente mobile-first
+            </div>
+            <h1 className="mt-5 max-w-xl text-4xl font-semibold leading-tight tracking-tight">
+              Prenota in autonomia, senza account e senza passaggi superflui.
+            </h1>
+            <p className="mt-4 max-w-xl text-base leading-8 text-white/75">
+              Questo workspace mostra come BarberFlow gestisce prenotazioni, disponibilita e recupero appuntamenti con un&apos;esperienza chiara, veloce e credibile.
+            </p>
+            <div className="mt-8 grid gap-3 sm:grid-cols-2">
+              {[
+                'Prenotazione veloce in 4 passaggi',
+                'Disponibilita aggiornata in tempo reale',
+                'Gestione autonoma delle prenotazioni',
+                'Interfaccia progettata per smartphone',
+              ].map((item) => (
+                <div key={item} className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm text-white/85 backdrop-blur">
+                  {item}
+                </div>
+              ))}
+            </div>
+          </section>
 
-          {/* Content */}
-          <div className="px-8 py-6">
+          <section className="pb-10">
+            <div className="mb-4 flex rounded-3xl border border-white/70 bg-white p-2 shadow-lg shadow-brand-900/10">
+              <button
+                onClick={() => setActiveTab('prenota')}
+                className={`flex-1 rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${
+                  activeTab === 'prenota' ? 'bg-slate-950 text-white' : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                Prenota
+              </button>
+              <button
+                onClick={() => setActiveTab('miei')}
+                className={`flex-1 rounded-2xl px-4 py-3 text-sm font-medium transition-colors ${
+                  activeTab === 'miei' ? 'bg-slate-950 text-white' : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                Le mie prenotazioni
+              </button>
+            </div>
+
             {activeTab === 'prenota' ? (
               <BookingTab slug={slug!} onBooked={() => setActiveTab('miei')} />
             ) : (
               <MyAppointmentsTab slug={slug!} />
             )}
-          </div>
+          </section>
         </div>
       </div>
     </div>

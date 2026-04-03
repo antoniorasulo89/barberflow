@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
+import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import DashboardLayout from './pages/DashboardLayout';
 import AgendaPage from './pages/AgendaPage';
@@ -19,7 +20,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to={`/${DEFAULT_SLUG}`} replace />} />
+      <Route path="/" element={<LandingPage />} />
       <Route path="/admin/login" element={<LoginPage />} />
       <Route
         path="/admin"
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="staff" element={<StaffPage />} />
         <Route path="services" element={<ServicesPage />} />
       </Route>
+      <Route path="/book" element={<Navigate to={`/${DEFAULT_SLUG}`} replace />} />
       <Route path="/:slug" element={<ClientPortalPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

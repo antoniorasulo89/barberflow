@@ -15,6 +15,7 @@ export default function ClientsPage() {
   const [sort, setSort] = useState<SortKey>('recenti');
   const [tagFilter, setTagFilter] = useState('');
   const [showNew, setShowNew] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<Cliente | null>(null);
   const [newForm, setNewForm] = useState({ nome: '', telefono: '', email: '', tag: '' });
 
   const params: Record<string, string> = { sort, limit: '100' };
@@ -30,7 +31,10 @@ export default function ClientsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => clientsApi.delete(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['clients'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['clients'] });
+      setClientToDelete(null);
+    },
   });
 
   const createMutation = useMutation({
@@ -39,7 +43,7 @@ export default function ClientsPage() {
         nome: newForm.nome,
         telefono: newForm.telefono || undefined,
         email: newForm.email || undefined,
-        tag: newForm.tag ? newForm.tag.split(',').map((t) => t.trim()).filter(Boolean) : [],
+        tag: newForm.tag ? newForm.tag.split(',').map((item) => item.trim()).filter(Boolean) : [],
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['clients'] });
@@ -48,135 +52,210 @@ export default function ClientsPage() {
     },
   });
 
-  const allTags = [...new Set(clients.flatMap((c) => c.tag))];
+  const allTags = [...new Set(clients.flatMap((client) => client.tag))];
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-gray-900">Clienti</h1>
-        <button onClick={() => setShowNew(true)} className="btn-primary">+ Nuovo cliente</button>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        <input
-          className="input max-w-64"
-          placeholder="Cerca per nome, email, telefono..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <select className="input w-auto" value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
-          <option value="recenti">Più recenti</option>
-          <option value="visite">Più visite</option>
-          <option value="valore">Valore maggiore</option>
-          <option value="nome">Nome A-Z</option>
-        </select>
-        <select className="input w-auto" value={tagFilter} onChange={(e) => setTagFilter(e.target.value)}>
-          <option value="">Tutti i tag</option>
-          {allTags.map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
-      </div>
-
-      {isLoading ? (
-        <div className="text-gray-400 text-center py-12">Caricamento...</div>
-      ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                {['Cliente', 'Contatti', 'Tag', 'Visite', 'Valore totale', 'Ultima visita', '', ''].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {clients.map((c) => (
-                <tr key={c.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3">
-                    <Link to={`/clients/${c.id}`} className="font-medium text-gray-900 hover:text-brand-600">
-                      {c.nome}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">
-                    <div>{c.telefono}</div>
-                    <div className="text-xs">{c.email}</div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {c.tag.map((t) => (
-                        <span key={t} className="badge bg-brand-100 text-brand-700">{t}</span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{c.visiteTotali}</td>
-                  <td className="px-4 py-3 text-sm font-medium text-green-700">€{c.valoreTotale.toFixed(0)}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">
-                    {c.ultimaVisita ? format(parseISO(c.ultimaVisita), 'd MMM yyyy', { locale: it }) : '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link to={`/admin/clients/${c.id}`} className="text-brand-600 hover:text-brand-700 text-sm font-medium">
-                      Profilo →
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => {
-                        if (confirm(`Eliminare "${c.nome}"? Verranno cancellati anche tutti i suoi appuntamenti.`)) {
-                          deleteMutation.mutate(c.id);
-                        }
-                      }}
-                      disabled={deleteMutation.isPending}
-                      className="text-red-400 hover:text-red-600 transition-colors text-sm"
-                      title="Elimina cliente"
-                    >
-                      🗑
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {clients.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-gray-400">
-                    Nessun cliente trovato
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+    <div className="p-4 sm:p-6">
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">Rubrica clienti</div>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Clienti e relazioni ricorrenti</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600">
+            Cerca rapidamente, controlla il valore generato e apri ogni profilo senza perdere il contesto del lavoro giornaliero.
+          </p>
         </div>
-      )}
+        <button onClick={() => setShowNew(true)} className="btn-primary">
+          Nuovo cliente
+        </button>
+      </div>
+
+      <div className="surface-panel p-4 sm:p-6">
+        <div className="mb-5 grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_auto_auto]">
+          <input
+            className="input"
+            placeholder="Cerca per nome, email o telefono"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+          <select className="input lg:w-52" value={sort} onChange={(event) => setSort(event.target.value as SortKey)}>
+            <option value="recenti">Piu recenti</option>
+            <option value="visite">Piu visite</option>
+            <option value="valore">Valore maggiore</option>
+            <option value="nome">Nome A-Z</option>
+          </select>
+          <select className="input lg:w-52" value={tagFilter} onChange={(event) => setTagFilter(event.target.value)}>
+            <option value="">Tutti i tag</option>
+            {allTags.map((tag) => (
+              <option key={tag} value={tag}>
+                {tag}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {isLoading ? (
+          <div className="rounded-2xl bg-slate-50 py-10 text-center text-sm text-slate-500">Caricamento clienti...</div>
+        ) : clients.length === 0 ? (
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-sm leading-6 text-slate-600">
+            Nessun cliente trovato. Prova a cambiare filtri oppure crea il primo profilo direttamente da questa schermata.
+          </div>
+        ) : (
+          <>
+            <div className="hidden overflow-hidden rounded-3xl border border-slate-200 lg:block">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                  <tr>
+                    {['Cliente', 'Contatti', 'Tag', 'Visite', 'Valore', 'Ultima visita', ''].map((header) => (
+                      <th key={header} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                        {header}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {clients.map((client) => (
+                    <tr key={client.id} className="transition-colors hover:bg-slate-50">
+                      <td className="px-4 py-4">
+                        <Link to={`/admin/clients/${client.id}`} className="font-semibold text-slate-950 hover:text-brand-700">
+                          {client.nome}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-4 text-sm text-slate-500">
+                        <div>{client.telefono || 'Telefono non inserito'}</div>
+                        <div className="text-xs">{client.email || 'Email non inserita'}</div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex flex-wrap gap-1">
+                          {client.tag.map((tag) => (
+                            <span key={tag} className="badge bg-brand-100 text-brand-700">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-sm font-medium text-slate-900">{client.visiteTotali}</td>
+                      <td className="px-4 py-4 text-sm font-medium text-emerald-700">EUR {client.valoreTotale.toFixed(0)}</td>
+                      <td className="px-4 py-4 text-sm text-slate-500">
+                        {client.ultimaVisita ? format(parseISO(client.ultimaVisita), 'd MMM yyyy', { locale: it }) : 'Nessuna visita'}
+                      </td>
+                      <td className="px-4 py-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <Link to={`/admin/clients/${client.id}`} className="btn-secondary">
+                            Profilo
+                          </Link>
+                          <button onClick={() => setClientToDelete(client)} className="btn-secondary border-red-200 text-red-600 hover:bg-red-50">
+                            Elimina
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="space-y-3 lg:hidden">
+              {clients.map((client) => (
+                <article key={client.id} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <Link to={`/admin/clients/${client.id}`} className="text-lg font-semibold text-slate-950 hover:text-brand-700">
+                        {client.nome}
+                      </Link>
+                      <div className="mt-1 text-sm text-slate-500">{client.telefono || 'Telefono non inserito'}</div>
+                      <div className="text-sm text-slate-500">{client.email || 'Email non inserita'}</div>
+                    </div>
+                    <div className="rounded-2xl bg-brand-50 px-3 py-2 text-right text-sm font-semibold text-brand-700">
+                      EUR {client.valoreTotale.toFixed(0)}
+                    </div>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-1">
+                    {client.tag.map((tag) => (
+                      <span key={tag} className="badge bg-brand-100 text-brand-700">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="mt-4 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+                    <div>Visite totali: {client.visiteTotali}</div>
+                    <div>
+                      Ultima visita:{' '}
+                      {client.ultimaVisita ? format(parseISO(client.ultimaVisita), 'd MMM yyyy', { locale: it }) : 'Nessuna visita'}
+                    </div>
+                  </div>
+                  <div className="mt-4 flex gap-2">
+                    <Link to={`/admin/clients/${client.id}`} className="btn-secondary flex-1">
+                      Apri profilo
+                    </Link>
+                    <button onClick={() => setClientToDelete(client)} className="btn-secondary flex-1 border-red-200 text-red-600 hover:bg-red-50">
+                      Elimina
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
 
       {showNew && (
         <Modal title="Nuovo cliente" onClose={() => setShowNew(false)} size="sm">
           <form
-            onSubmit={(e) => { e.preventDefault(); createMutation.mutate(); }}
+            onSubmit={(event) => {
+              event.preventDefault();
+              createMutation.mutate();
+            }}
             className="space-y-4"
           >
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
-              <input className="input" value={newForm.nome} onChange={(e) => setNewForm((f) => ({ ...f, nome: e.target.value }))} required />
+              <label className="mb-1 block text-sm font-medium text-slate-700">Nome</label>
+              <input className="input" value={newForm.nome} onChange={(event) => setNewForm((current) => ({ ...current, nome: event.target.value }))} required />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Telefono</label>
-              <input className="input" value={newForm.telefono} onChange={(e) => setNewForm((f) => ({ ...f, telefono: e.target.value }))} />
+              <label className="mb-1 block text-sm font-medium text-slate-700">Telefono</label>
+              <input className="input" value={newForm.telefono} onChange={(event) => setNewForm((current) => ({ ...current, telefono: event.target.value }))} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input className="input" type="email" value={newForm.email} onChange={(e) => setNewForm((f) => ({ ...f, email: e.target.value }))} />
+              <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
+              <input className="input" type="email" value={newForm.email} onChange={(event) => setNewForm((current) => ({ ...current, email: event.target.value }))} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tag (separati da virgola)</label>
-              <input className="input" placeholder="vip, frequente..." value={newForm.tag} onChange={(e) => setNewForm((f) => ({ ...f, tag: e.target.value }))} />
+              <label className="mb-1 block text-sm font-medium text-slate-700">Tag</label>
+              <input className="input" placeholder="vip, ricorrente, premium" value={newForm.tag} onChange={(event) => setNewForm((current) => ({ ...current, tag: event.target.value }))} />
             </div>
             <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => setShowNew(false)} className="btn-secondary flex-1">Annulla</button>
+              <button type="button" onClick={() => setShowNew(false)} className="btn-secondary flex-1">
+                Annulla
+              </button>
               <button type="submit" className="btn-primary flex-1" disabled={createMutation.isPending}>
-                {createMutation.isPending ? 'Creazione...' : 'Crea'}
+                {createMutation.isPending ? 'Creazione...' : 'Crea cliente'}
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {clientToDelete && (
+        <Modal title="Elimina cliente" onClose={() => setClientToDelete(null)} size="sm">
+          <div className="space-y-4 text-sm text-slate-600">
+            <p>
+              Stai per eliminare <strong className="text-slate-900">{clientToDelete.nome}</strong> insieme ai suoi appuntamenti associati.
+            </p>
+            <p>Questa azione e irreversibile.</p>
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={() => setClientToDelete(null)} className="btn-secondary flex-1">
+                Annulla
+              </button>
+              <button
+                type="button"
+                onClick={() => deleteMutation.mutate(clientToDelete.id)}
+                className="btn-danger flex-1"
+                disabled={deleteMutation.isPending}
+              >
+                {deleteMutation.isPending ? 'Eliminazione...' : 'Conferma'}
+              </button>
+            </div>
+          </div>
         </Modal>
       )}
     </div>
