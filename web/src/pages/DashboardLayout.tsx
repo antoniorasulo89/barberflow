@@ -75,9 +75,7 @@ export default function DashboardLayout() {
                 }`
               }
             >
-              <span className="min-w-14 text-xs uppercase tracking-[0.18em] text-white/45">
-                {item.icon}
-              </span>
+              <span className="min-w-14 text-xs uppercase tracking-[0.18em] text-white/45">{item.icon}</span>
               {item.label}
             </NavLink>
           ))}

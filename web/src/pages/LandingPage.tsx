@@ -122,7 +122,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="py-18 bg-white">
+      <section className="bg-white py-18">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-10">
           <div className="mb-12 text-center">
             <h2 className="text-3xl font-semibold tracking-tight text-slate-950">Tutto cio che serve per lavorare meglio</h2>
@@ -147,63 +147,61 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Trust bar */}
       <section className="border-y border-slate-100 bg-slate-50 py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-10">
           <div className="flex flex-wrap justify-center gap-x-8 gap-y-3">
             {[
               'Dati isolati per ogni salone',
               'Nessuna installazione richiesta',
-              'Disponibilità in tempo reale',
+              'Disponibilita in tempo reale',
               'Notifiche automatiche ai clienti',
               'Accesso da qualsiasi dispositivo',
-            ].map((t) => (
-              <div key={t} className="flex items-center gap-2 text-sm text-slate-500">
+            ].map((item) => (
+              <div key={item} className="flex items-center gap-2 text-sm text-slate-500">
                 <svg className="h-4 w-4 flex-shrink-0 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
-                {t}
+                {item}
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Pricing */}
       <section className="bg-white py-20">
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-10">
           <div className="mb-12 text-center">
             <h2 className="text-3xl font-semibold tracking-tight text-slate-950">Prezzi semplici, nessuna sorpresa</h2>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-slate-600">
-              Inizia gratis, scala quando serve. Nessun contratto, nessun costo nascosto.
+              Una struttura chiara per posizionare BarberFlow come prodotto vendibile anche prima di un pricing definitivo.
             </p>
           </div>
           <div className="grid gap-6 sm:grid-cols-3">
             {[
               {
                 name: 'Starter',
-                price: 'Gratis',
-                sub: 'Per sempre',
-                features: ['1 barbiere', 'Prenotazioni illimitate', 'Portale clienti', 'Dashboard admin'],
-                cta: 'Inizia gratis',
-                href: '/admin/login',
+                price: 'Demo',
+                sub: 'Per pilot e test',
+                features: ['Prenotazioni online', 'Agenda multi-vista', 'Portale clienti', 'Dashboard admin'],
+                cta: 'Prova il prodotto',
+                href: `/${DEFAULT_SLUG}`,
                 highlight: false,
               },
               {
                 name: 'Pro',
-                price: '€ 29',
+                price: 'EUR 29',
                 sub: 'al mese',
-                features: ['Fino a 5 barbieri', 'Notifiche SMS ed email', 'Esportazione PDF', 'Statistiche clienti avanzate'],
-                cta: 'Inizia la prova',
+                features: ['Staff multipli', 'Storico clienti', 'Notifiche integrate', 'Workflow piu completo'],
+                cta: 'Apri la dashboard',
                 href: '/admin/login',
                 highlight: true,
               },
               {
                 name: 'Business',
                 price: 'Su misura',
-                sub: 'Contattaci',
-                features: ['Barbieri illimitati', 'Multi-sede', 'Onboarding dedicato', 'SLA garantito'],
-                cta: 'Parliamone',
+                sub: 'Per saloni in crescita',
+                features: ['Piu sedi o tenant', 'Domini dedicati', 'Onboarding guidato', 'Supporto prioritario'],
+                cta: 'Valuta il setup',
                 href: '/admin/login',
                 highlight: false,
               },
@@ -225,13 +223,13 @@ export default function LandingPage() {
                   </div>
                   <div className={`text-sm ${plan.highlight ? 'text-white/70' : 'text-slate-500'}`}>{plan.sub}</div>
                 </div>
-                <ul className="flex-1 space-y-2 mb-6">
-                  {plan.features.map((f) => (
-                    <li key={f} className={`flex items-center gap-2 text-sm ${plan.highlight ? 'text-white/90' : 'text-slate-600'}`}>
+                <ul className="mb-6 flex-1 space-y-2">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className={`flex items-center gap-2 text-sm ${plan.highlight ? 'text-white/90' : 'text-slate-600'}`}>
                       <svg className={`h-4 w-4 flex-shrink-0 ${plan.highlight ? 'text-white' : 'text-brand-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
-                      {f}
+                      {feature}
                     </li>
                   ))}
                 </ul>
