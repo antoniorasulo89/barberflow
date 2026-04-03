@@ -5,6 +5,7 @@ import prisma from '../utils/prisma';
 import { notFound, unauthorized, badRequest } from '../utils/errors';
 import { getAvailableSlots } from '../services/availabilityService';
 import { scheduleAppointmentNotifications, sendCancellationNotification } from '../services/notificationService';
+import { staffCanPerformService, tenantUsesStaffServiceAssignments } from '../services/staffCapabilityService';
 
 const router = Router();
 
@@ -31,11 +32,38 @@ router.get('/:slug/services', async (req, res, next) => {
 router.get('/:slug/staff', async (req, res, next) => {
   try {
     const tenant = await getTenant(req.params.slug);
+    const { serviceId } = z.object({
+      serviceId: z.string().optional(),
+    }).parse(req.query);
+
+    const usesAssignments = await tenantUsesStaffServiceAssignments(tenant.id);
     const staff = await prisma.staff.findMany({
-      where: { tenantId: tenant.id, attivo: true },
+      where: {
+        tenantId: tenant.id,
+        attivo: true,
+        ...(serviceId && usesAssignments
+          ? {
+              servizi: {
+                some: {
+                  servizioId: serviceId,
+                },
+              },
+            }
+          : {}),
+      },
+      include: {
+        servizi: {
+          include: {
+            servizio: true,
+          },
+        },
+      },
       orderBy: { nome: 'asc' },
     });
-    res.json(staff);
+    res.json(staff.map((member) => ({
+      ...member,
+      servizi: member.servizi.map((entry) => entry.servizio),
+    })));
   } catch (err) { next(err); }
 });
 
@@ -58,6 +86,9 @@ router.get('/:slug/availability', async (req, res, next) => {
       where: { id: staffId, tenantId: tenant.id, attivo: true },
     });
     if (!staff) return next(notFound('Staff'));
+
+    const canPerform = await staffCanPerformService(tenant.id, staffId, serviceId);
+    if (!canPerform) return next(badRequest('Questo professionista non esegue il servizio selezionato'));
 
     const slots = await getAvailableSlots(tenant.id, staffId, date, servizio.durataMini);
     res.json(slots);
@@ -87,6 +118,9 @@ router.post('/:slug/book', async (req, res, next) => {
       where: { id: data.staffId, tenantId: tenant.id, attivo: true },
     });
     if (!staff) return next(notFound('Staff'));
+
+    const canPerform = await staffCanPerformService(tenant.id, data.staffId, data.servizioId);
+    if (!canPerform) return next(badRequest('Questo professionista non esegue il servizio selezionato'));
 
     // Find or create client by phone/email
     let cliente = await prisma.cliente.findFirst({

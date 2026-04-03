@@ -67,6 +67,7 @@ model Staff {
   appuntamenti      Appuntamento[]
   disponibilita     Disponibilita[]
   clientiPreferenze ClientePreferenza[]
+  servizi           StaffServizio[]
 
   @@unique([tenantId, nome])
   @@map("staff")
@@ -82,6 +83,7 @@ model Servizio {
 
   tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   appuntamenti Appuntamento[]
+  staff        StaffServizio[]
 
   @@unique([tenantId, nome])
   @@map("servizi")
@@ -217,4 +219,16 @@ model ClientePreferenza {
   staff   Staff?  @relation(fields: [staffId], references: [id])
 
   @@map("clienti_preferenze")
+}
+
+model StaffServizio {
+  id         String @id @default(cuid())
+  staffId    String @map("staff_id")
+  servizioId String @map("servizio_id")
+
+  staff    Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  servizio Servizio @relation(fields: [servizioId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, servizioId])
+  @@map("staff_servizi")
 }

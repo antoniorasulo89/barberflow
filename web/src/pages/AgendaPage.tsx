@@ -29,12 +29,19 @@ const APP_COLORS: Record<string, { bg: string; border: string }> = {
 };
 
 const VIEW_LABELS: Record<ViewMode, string> = { day: 'Giorno', week: 'Settimana', month: 'Mese' };
+const MOBILE_GROUP_BY_KEY = 'barberflow:agenda-mobile-group-by';
 
 export default function AgendaPage() {
   const [view, setView] = useState<ViewMode>('day');
   const [date, setDate] = useState(new Date());
   const [selected, setSelected] = useState<Appuntamento | null>(null);
   const [showNew, setShowNew] = useState(false);
+  const [selectedStaffId, setSelectedStaffId] = useState<string>('all');
+  const [mobileGroupBy, setMobileGroupBy] = useState<'day' | 'staff'>(() => {
+    if (typeof window === 'undefined') return 'day';
+    const stored = window.localStorage.getItem(MOBILE_GROUP_BY_KEY);
+    return stored === 'staff' ? 'staff' : 'day';
+  });
   const qc = useQueryClient();
 
   const dateStr = format(date, 'yyyy-MM-dd');
@@ -65,12 +72,23 @@ export default function AgendaPage() {
   });
 
   const appointments: Appuntamento[] = data?.items ?? [];
+  const visibleStaff = useMemo(
+    () => (selectedStaffId === 'all' ? staffList : staffList.filter((staff) => staff.id === selectedStaffId)),
+    [selectedStaffId, staffList]
+  );
+  const filteredAppointments = useMemo(
+    () =>
+      selectedStaffId === 'all'
+        ? appointments
+        : appointments.filter((appointment) => appointment.staffId === selectedStaffId),
+    [appointments, selectedStaffId]
+  );
   const visibleAppointments = useMemo(
     () =>
-      [...appointments].sort(
+      [...filteredAppointments].sort(
         (a, b) => new Date(a.inizio).getTime() - new Date(b.inizio).getTime()
       ),
-    [appointments]
+    [filteredAppointments]
   );
   const agendaStats = useMemo(() => {
     const confirmed = visibleAppointments.filter((appointment) =>
@@ -188,6 +206,13 @@ export default function AgendaPage() {
     );
   }
 
+  function updateMobileGroupBy(next: 'day' | 'staff') {
+    setMobileGroupBy(next);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(MOBILE_GROUP_BY_KEY, next);
+    }
+  }
+
   function MobileAgendaList() {
     if (visibleAppointments.length === 0) {
       return (
@@ -217,6 +242,51 @@ export default function AgendaPage() {
                 {format(parseISO(app.inizio), 'HH:mm')} - {format(parseISO(app.fine), 'HH:mm')}
               </div>
             </button>
+          ))}
+        </div>
+      );
+    }
+
+    if (mobileGroupBy === 'staff') {
+      const groupedByStaff = visibleStaff
+        .map((staff) => ({
+          staff,
+          appointments: visibleAppointments.filter((appointment) => appointment.staffId === staff.id),
+        }))
+        .filter((group) => group.appointments.length > 0);
+
+      return (
+        <div className="space-y-4">
+          {groupedByStaff.map(({ staff, appointments: staffAppointments }) => (
+            <section key={staff.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-slate-900">{staff.nome}</div>
+                  <div className="text-xs text-slate-500">{staff.ruolo}</div>
+                </div>
+                <div className="rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700">
+                  {staffAppointments.length} appuntamenti
+                </div>
+              </div>
+              <div className="space-y-3">
+                {staffAppointments.map((app) => (
+                  <button
+                    key={app.id}
+                    onClick={() => setSelected(app)}
+                    className="w-full rounded-2xl border border-slate-100 bg-slate-50 p-3 text-left"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="font-medium text-slate-900">{app.cliente?.nome}</div>
+                      <StatusBadge stato={app.stato} />
+                    </div>
+                    <div className="mt-1 text-sm text-slate-500">{app.servizio?.nome}</div>
+                    <div className="mt-2 text-sm font-medium text-brand-700">
+                      {format(parseISO(app.inizio), "d MMM 'alle' HH:mm", { locale: it })} - {format(parseISO(app.fine), 'HH:mm')}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       );
@@ -263,9 +333,9 @@ export default function AgendaPage() {
   // ── Day View ──────────────────────────────────────────────────────────────
   function DayView() {
     return (
-      <div className="flex min-w-max">
+        <div className="flex min-w-max">
         <TimeColumn />
-        {staffList.map((staff) => (
+        {visibleStaff.map((staff) => (
           <div key={staff.id} className="flex-1 min-w-48 border-r border-gray-200">
             <div className="h-12 border-b border-gray-200 px-3 flex items-center bg-white sticky top-0 z-10">
               <div>
@@ -275,7 +345,7 @@ export default function AgendaPage() {
             </div>
             <div className="relative bg-gray-50" style={{ height: '660px' }}>
               {HOURS.map((h) => <div key={h} className="absolute w-full border-t border-gray-100" style={{ top: `${((h - 8) / 11) * 100}%` }} />)}
-              {appointments.filter((a) => a.staffId === staff.id).map((app) => (
+              {visibleAppointments.filter((a) => a.staffId === staff.id).map((app) => (
                 <AppCard key={app.id} app={app} />
               ))}
             </div>
@@ -295,7 +365,7 @@ export default function AgendaPage() {
       <div className="flex min-w-max">
         <TimeColumn />
         {weekDays.map((day) => {
-          const dayApps = appointments.filter((a) => isSameDay(parseISO(a.inizio), day));
+          const dayApps = visibleAppointments.filter((a) => isSameDay(parseISO(a.inizio), day));
           const today = isToday(day);
           return (
             <div key={day.toISOString()} className="flex-1 min-w-32 border-r border-gray-200">
@@ -334,7 +404,7 @@ export default function AgendaPage() {
         </div>
         <div className="grid grid-cols-7 gap-1">
           {calDays.map((day) => {
-            const dayApps = appointments.filter((a) => isSameDay(parseISO(a.inizio), day));
+            const dayApps = visibleAppointments.filter((a) => isSameDay(parseISO(a.inizio), day));
             const inMonth = day.getMonth() === date.getMonth();
             const today = isToday(day);
             return (
@@ -422,6 +492,31 @@ export default function AgendaPage() {
             </button>
           </div>
         </div>
+        <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+          <button
+            onClick={() => setSelectedStaffId('all')}
+            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+              selectedStaffId === 'all'
+                ? 'bg-slate-950 text-white'
+                : 'border border-slate-200 bg-white text-slate-600 hover:border-brand-300 hover:text-slate-900'
+            }`}
+          >
+            Tutto il team
+          </button>
+          {staffList.map((staff) => (
+            <button
+              key={staff.id}
+              onClick={() => setSelectedStaffId(staff.id)}
+              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                selectedStaffId === staff.id
+                  ? 'bg-brand-500 text-white'
+                  : 'border border-slate-200 bg-white text-slate-600 hover:border-brand-300 hover:text-slate-900'
+              }`}
+            >
+              {staff.nome}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid gap-3 border-b border-slate-200 bg-slate-50 px-6 py-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -441,6 +536,30 @@ export default function AgendaPage() {
       ) : (
         <div className="flex-1 overflow-auto">
           <div className="p-4 md:hidden">
+            {view !== 'day' && (
+              <div className="mb-4 flex rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
+                <button
+                  onClick={() => updateMobileGroupBy('day')}
+                  className={`flex-1 rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+                    mobileGroupBy === 'day'
+                      ? 'bg-slate-950 text-white'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  Per giorno
+                </button>
+                <button
+                  onClick={() => updateMobileGroupBy('staff')}
+                  className={`flex-1 rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+                    mobileGroupBy === 'staff'
+                      ? 'bg-slate-950 text-white'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  Per staff
+                </button>
+              </div>
+            )}
             <MobileAgendaList />
           </div>
           <div className="hidden md:block">
