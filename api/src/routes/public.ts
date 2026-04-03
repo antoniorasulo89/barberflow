@@ -176,7 +176,7 @@ router.post('/:slug/book', async (req, res, next) => {
       include: { cliente: true, staff: true, servizio: true },
     });
 
-    await scheduleAppointmentNotifications(appuntamento.id, tenant.id, cliente, inizio);
+    scheduleAppointmentNotifications(appuntamento.id, tenant.id, cliente, inizio).catch(() => null);
     res.status(201).json(appuntamento);
   } catch (err) { next(err); }
 });
@@ -263,7 +263,7 @@ router.delete('/:slug/client/appointments/:id', async (req, res, next) => {
     });
 
     if (app.stato !== 'cancelled') {
-      await sendCancellationNotification(app.id, tenant.id, app.cliente);
+      sendCancellationNotification(app.id, tenant.id, app.cliente).catch(() => null);
     }
 
     res.json({ success: true });

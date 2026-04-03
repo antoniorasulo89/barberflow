@@ -44,50 +44,57 @@ export default function ServicesPage() {
   });
 
   const toggleMutation = useMutation({
-    mutationFn: ({ id, attivo }: { id: string; attivo: boolean }) =>
-      servicesApi.update(id, { attivo }),
+    mutationFn: ({ id, attivo }: { id: string; attivo: boolean }) => servicesApi.update(id, { attivo }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['services'] }),
   });
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900">Servizi</h1>
-        <button onClick={() => setShowNew(true)} className="btn-primary">+ Nuovo servizio</button>
+        <button onClick={() => setShowNew(true)} className="btn-primary">
+          + Nuovo servizio
+        </button>
       </div>
 
       {isLoading ? (
-        <div className="text-gray-400 text-center py-12">Caricamento...</div>
+        <div className="py-12 text-center text-gray-400">Caricamento...</div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {servizi.map((s) => (
-            <div key={s.id} className="card flex flex-col gap-3">
-              <div className="flex items-start justify-between">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {servizi.map((service) => (
+            <div key={service.id} className="card flex flex-col gap-3">
+              <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="font-semibold text-gray-900">{s.nome}</div>
-                  <div className="text-sm text-gray-500 mt-1">{s.durataMini} minuti</div>
+                  <div className="font-semibold text-gray-900">{service.nome}</div>
+                  <div className="mt-1 text-sm text-gray-500">{service.durataMini} minuti</div>
                 </div>
-                <div className="text-lg font-bold text-brand-600">€{s.prezzo}</div>
+                <div className="text-right">
+                  <div className="text-lg font-bold text-brand-600">EUR {service.prezzo}</div>
+                  <div className={`mt-1 text-xs font-medium ${service.attivo ? 'text-emerald-600' : 'text-slate-400'}`}>
+                    {service.attivo ? 'Attivo nel booking' : 'Nascosto nel booking'}
+                  </div>
+                </div>
               </div>
+
               <div className="flex gap-2">
                 <button
-                  onClick={() => toggleMutation.mutate({ id: s.id, attivo: !s.attivo })}
-                  className={`flex-1 text-sm px-3 py-1.5 rounded-lg border font-medium transition-colors ${
-                    s.attivo
+                  onClick={() => toggleMutation.mutate({ id: service.id, attivo: !service.attivo })}
+                  className={`flex-1 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+                    service.attivo
                       ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
                       : 'border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100'
                   }`}
                 >
-                  {s.attivo ? '✓ Attivo' : 'Disattivato'}
+                  {service.attivo ? 'Attivo' : 'Disattivato'}
                 </button>
                 <button
                   onClick={() => {
-                    setEditService(s);
-                    setEditForm({ nome: s.nome, durataMini: s.durataMini, prezzo: s.prezzo });
+                    setEditService(service);
+                    setEditForm({ nome: service.nome, durataMini: service.durataMini, prezzo: service.prezzo });
                   }}
-                  className="text-sm px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 font-medium transition-colors"
+                  className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100"
                 >
-                  ✏ Modifica
+                  Modifica
                 </button>
               </div>
             </div>
@@ -97,18 +104,18 @@ export default function ServicesPage() {
 
       {showNew && (
         <Modal title="Nuovo servizio" onClose={() => setShowNew(false)} size="sm">
-          <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(); }} className="space-y-4">
+          <form onSubmit={(event) => { event.preventDefault(); createMutation.mutate(); }} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
-              <input className="input" value={newForm.nome} onChange={(e) => setNewForm((f) => ({ ...f, nome: e.target.value }))} required />
+              <label className="mb-1 block text-sm font-medium text-gray-700">Nome *</label>
+              <input className="input" value={newForm.nome} onChange={(event) => setNewForm((form) => ({ ...form, nome: event.target.value }))} required />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Durata (minuti) *</label>
-              <input className="input" type="number" min={5} value={newForm.durataMini} onChange={(e) => setNewForm((f) => ({ ...f, durataMini: Number(e.target.value) }))} required />
+              <label className="mb-1 block text-sm font-medium text-gray-700">Durata (minuti) *</label>
+              <input className="input" type="number" min={5} value={newForm.durataMini} onChange={(event) => setNewForm((form) => ({ ...form, durataMini: Number(event.target.value) }))} required />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Prezzo (€) *</label>
-              <input className="input" type="number" min={0} step={0.5} value={newForm.prezzo} onChange={(e) => setNewForm((f) => ({ ...f, prezzo: Number(e.target.value) }))} required />
+              <label className="mb-1 block text-sm font-medium text-gray-700">Prezzo (EUR) *</label>
+              <input className="input" type="number" min={0} step={0.5} value={newForm.prezzo} onChange={(event) => setNewForm((form) => ({ ...form, prezzo: Number(event.target.value) }))} required />
             </div>
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={() => setShowNew(false)} className="btn-secondary flex-1">Annulla</button>
@@ -120,20 +127,20 @@ export default function ServicesPage() {
         </Modal>
       )}
 
-      {editService !== null && (
+      {editService && (
         <Modal title="Modifica servizio" onClose={() => setEditService(null)} size="sm">
-          <form onSubmit={(e) => { e.preventDefault(); updateMutation.mutate(); }} className="space-y-4">
+          <form onSubmit={(event) => { event.preventDefault(); updateMutation.mutate(); }} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
-              <input className="input" value={editForm.nome} onChange={(e) => setEditForm((f) => ({ ...f, nome: e.target.value }))} required />
+              <label className="mb-1 block text-sm font-medium text-gray-700">Nome *</label>
+              <input className="input" value={editForm.nome} onChange={(event) => setEditForm((form) => ({ ...form, nome: event.target.value }))} required />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Durata (minuti) *</label>
-              <input className="input" type="number" min={5} value={editForm.durataMini} onChange={(e) => setEditForm((f) => ({ ...f, durataMini: Number(e.target.value) }))} required />
+              <label className="mb-1 block text-sm font-medium text-gray-700">Durata (minuti) *</label>
+              <input className="input" type="number" min={5} value={editForm.durataMini} onChange={(event) => setEditForm((form) => ({ ...form, durataMini: Number(event.target.value) }))} required />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Prezzo (€) *</label>
-              <input className="input" type="number" min={0} step={0.5} value={editForm.prezzo} onChange={(e) => setEditForm((f) => ({ ...f, prezzo: Number(e.target.value) }))} required />
+              <label className="mb-1 block text-sm font-medium text-gray-700">Prezzo (EUR) *</label>
+              <input className="input" type="number" min={0} step={0.5} value={editForm.prezzo} onChange={(event) => setEditForm((form) => ({ ...form, prezzo: Number(event.target.value) }))} required />
             </div>
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={() => setEditService(null)} className="btn-secondary flex-1">Annulla</button>

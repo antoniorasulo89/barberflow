@@ -167,7 +167,7 @@ function StaffServicesModal({ staff, onClose }: { staff: Staff; onClose: () => v
   }
 
   return (
-    <Modal title={`Servizi eseguibili — ${staff.nome}`} onClose={onClose} size="md">
+    <Modal title={`Servizi eseguibili - ${staff.nome}`} onClose={onClose} size="md">
       <div className="space-y-4">
         <p className="text-sm leading-6 text-slate-600">
           Seleziona solo i servizi che questo professionista puo realmente eseguire. Il booking cliente e l&apos;agenda useranno questa regola.
@@ -183,7 +183,7 @@ function StaffServicesModal({ staff, onClose }: { staff: Staff; onClose: () => v
               />
               <div className="flex-1">
                 <div className="font-medium text-slate-900">{servizio.nome}</div>
-                <div className="mt-1 text-slate-500">{servizio.durataMini} min · EUR {servizio.prezzo}</div>
+                <div className="mt-1 text-slate-500">{servizio.durataMini} min - EUR {servizio.prezzo}</div>
               </div>
             </label>
           ))}
@@ -232,7 +232,7 @@ function ScheduleModal({ staff, onClose }: { staff: Staff; onClose: () => void }
   const days = [1, 2, 3, 4, 5, 6, 0];
 
   return (
-    <Modal title={`Disponibilita — ${staff.nome}`} onClose={onClose} size="lg">
+    <Modal title={`Disponibilita - ${staff.nome}`} onClose={onClose} size="lg">
       <div className="space-y-3">
         {days.map((day) => {
           const daySlots = slots
@@ -263,7 +263,7 @@ function ScheduleModal({ staff, onClose }: { staff: Staff; onClose: () => void }
                       )
                     }
                   />
-                  <span className="text-gray-400">—</span>
+                  <span className="text-gray-400">-</span>
                   <input
                     type="time"
                     className="input w-28 py-1"

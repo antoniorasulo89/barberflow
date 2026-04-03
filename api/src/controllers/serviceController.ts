@@ -18,7 +18,7 @@ export async function listServices(req: Request, res: Response, next: NextFuncti
   try {
     const items = await prisma.servizio.findMany({
       where: { tenantId: req.tenantId! },
-      orderBy: { nome: 'asc' },
+      orderBy: [{ attivo: 'desc' }, { nome: 'asc' }],
     });
     res.json(items);
   } catch (err) {

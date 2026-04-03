@@ -39,7 +39,7 @@ const STEPS = [
 
 function BookingSummary({ state }: { state: BookingState }) {
   const items = [
-    ['Servizio', state.servizio ? `${state.servizio.nome} · ${state.servizio.durataMini} min` : 'Da scegliere'],
+    ['Servizio', state.servizio ? `${state.servizio.nome} - ${state.servizio.durataMini} min` : 'Da scegliere'],
     ['Professionista', state.staff?.nome ?? 'Da scegliere'],
     ['Quando', state.slot ? format(parseISO(state.slot.inizio), "d MMMM yyyy 'alle' HH:mm", { locale: it }) : state.date ? format(parseISO(`${state.date}T00:00:00`), 'd MMMM yyyy', { locale: it }) : 'Da scegliere'],
     ['Prezzo', state.servizio ? `EUR ${state.servizio.prezzo}` : 'Da definire'],
@@ -147,7 +147,7 @@ function BookingTab({ slug, onBooked }: { slug: string; onBooked: () => void }) 
         </div>
         <h2 className="mt-5 text-3xl font-semibold tracking-tight text-slate-950">Prenotazione confermata</h2>
         <p className="mt-3 text-sm leading-7 text-slate-600">
-          Il tuo appuntamento e stato registrato correttamente. Qui sotto trovi il riepilogo con i dettagli principali.
+          Il tuo appuntamento è stato registrato correttamente. Qui sotto trovi il riepilogo con i dettagli principali.
         </p>
         <div className="mx-auto mt-6 max-w-md rounded-3xl border border-slate-200 bg-slate-50 p-5 text-left">
           <div className="space-y-3 text-sm">
@@ -258,6 +258,11 @@ function BookingTab({ slug, onBooked }: { slug: string; onBooked: () => void }) 
                 </button>
               ))}
             </div>
+            {servizi.length === 0 && (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
+                Nessun servizio disponibile nel booking. Controlla dall&apos;admin che almeno un servizio sia attivo.
+              </div>
+            )}
           </div>
         )}
 
