@@ -59,6 +59,8 @@ export const staffApi = {
     apiClient.get(`/staff/${id}/services`).then((r) => r.data),
   updateServices: (id: string, servizioIds: string[]) =>
     apiClient.put(`/staff/${id}/services`, { servizioIds }).then((r) => r.data),
+  delete: (id: string) =>
+    apiClient.delete(`/staff/${id}`).then((r) => r.data),
 };
 
 // Services

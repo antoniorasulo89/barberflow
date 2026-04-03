@@ -17,7 +17,7 @@ const updateSchema = createSchema.partial().extend({
 export async function listServices(req: Request, res: Response, next: NextFunction) {
   try {
     const items = await prisma.servizio.findMany({
-      where: { tenantId: req.tenantId!, attivo: true },
+      where: { tenantId: req.tenantId! },
       orderBy: { nome: 'asc' },
     });
     res.json(items);
@@ -32,7 +32,7 @@ export async function createService(req: Request, res: Response, next: NextFunct
     const servizio = await prisma.servizio.create({
       data: { ...data, tenantId: req.tenantId! },
     });
-    await assignServiceToAllStaff(req.tenantId!, servizio.id);
+    await assignServiceToAllStaff(req.tenantId!, servizio.id).catch(() => null);
     res.status(201).json(servizio);
   } catch (err) {
     next(err);

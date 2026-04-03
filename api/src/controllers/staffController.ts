@@ -68,7 +68,7 @@ export async function createStaff(req: Request, res: Response, next: NextFunctio
       await prisma.staffServizio.createMany({
         data: servizi.map((servizio) => ({ staffId: staff.id, servizioId: servizio.id })),
         skipDuplicates: true,
-      });
+      }).catch(() => null);
     }
     res.status(201).json(staff);
   } catch (err) {
@@ -113,6 +113,19 @@ export async function updateStaffSchedule(req: Request, res: Response, next: Nex
       orderBy: { giornoSettimana: 'asc' },
     });
     res.json(schedule);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteStaff(req: Request, res: Response, next: NextFunction) {
+  try {
+    const staff = await prisma.staff.findFirst({
+      where: { id: req.params.id, tenantId: req.tenantId! },
+    });
+    if (!staff) return next(notFound('Staff'));
+    await prisma.staff.delete({ where: { id: req.params.id } });
+    res.status(204).send();
   } catch (err) {
     next(err);
   }

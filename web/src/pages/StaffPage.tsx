@@ -31,14 +31,16 @@ export default function StaffPage() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => staffApi.delete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['staff'] }),
+  });
+
   return (
     <div className="p-6">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Staff</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Gestisci disponibilita e servizi realmente eseguibili da ogni professionista.
-          </p>
         </div>
         <button onClick={() => setShowNew(true)} className="btn-primary">+ Aggiungi barbiere</button>
       </div>
@@ -83,6 +85,13 @@ export default function StaffPage() {
                 </button>
                 <button onClick={() => setScheduleStaff(staff)} className="btn-secondary text-sm">
                   Gestisci disponibilita
+                </button>
+                <button
+                  onClick={() => { if (confirm(`Eliminare ${staff.nome}?`)) deleteMutation.mutate(staff.id); }}
+                  disabled={deleteMutation.isPending}
+                  className="btn-secondary border-red-200 text-red-600 hover:bg-red-50 text-sm"
+                >
+                  Elimina
                 </button>
               </div>
             </div>
