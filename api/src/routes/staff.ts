@@ -4,7 +4,9 @@ import {
   listStaff,
   createStaff,
   getStaffSchedule,
+  getStaffServices,
   updateStaffSchedule,
+  updateStaffServices,
 } from '../controllers/staffController';
 
 const router = Router();
@@ -14,5 +16,7 @@ router.get('/', listStaff);
 router.post('/', createStaff);
 router.get('/:id/schedule', getStaffSchedule);
 router.put('/:id/schedule', updateStaffSchedule);
+router.get('/:id/services', getStaffServices);
+router.put('/:id/services', updateStaffServices);
 
 export default router;

@@ -34,6 +34,13 @@ export default function NewAppointmentModal({ onClose, date }: Props) {
     queryKey: ['services'],
     queryFn: servicesApi.list,
   });
+  const activeServices = servizi.filter((servizio) => servizio.attivo);
+
+  const availableStaff = form.servizioId
+    ? staffList.filter((staff) =>
+        staff.servizi?.some((servizio) => servizio.id === form.servizioId)
+      )
+    : staffList;
 
   const { data: slots = [], isFetching: loadingSlots } = useQuery<Slot[]>({
     queryKey: ['slots', form.staffId, date, form.servizioId],
@@ -85,11 +92,11 @@ export default function NewAppointmentModal({ onClose, date }: Props) {
           <select
             className="input"
             value={form.servizioId}
-            onChange={(e) => setForm((f) => ({ ...f, servizioId: e.target.value, inizio: '' }))}
+            onChange={(e) => setForm((f) => ({ ...f, servizioId: e.target.value, staffId: '', inizio: '' }))}
             required
           >
             <option value="">Seleziona servizio...</option>
-            {servizi.map((s) => (
+            {activeServices.map((s) => (
               <option key={s.id} value={s.id}>{s.nome} — {s.durataMini}min — €{s.prezzo}</option>
             ))}
           </select>
@@ -104,10 +111,15 @@ export default function NewAppointmentModal({ onClose, date }: Props) {
             required
           >
             <option value="">Seleziona barbiere...</option>
-            {staffList.map((s) => (
+            {availableStaff.map((s) => (
               <option key={s.id} value={s.id}>{s.nome}</option>
             ))}
           </select>
+          {form.servizioId && availableStaff.length === 0 && (
+            <div className="mt-2 text-sm text-amber-700">
+              Nessun professionista abilitato per questo servizio.
+            </div>
+          )}
         </div>
 
         <div>

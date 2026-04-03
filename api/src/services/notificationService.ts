@@ -51,6 +51,8 @@ export async function scheduleAppointmentNotifications(
     }
   }
 
+  if (notifications.length === 0) return;
+
   await prisma.notifica.createMany({
     data: notifications.map((n) => ({
       appuntamentoId,
@@ -65,6 +67,8 @@ export async function sendCancellationNotification(
   tenantId: string,
   cliente: Cliente
 ): Promise<void> {
+  if (!cliente.telefono && !cliente.email) return;
+
   await prisma.notifica.create({
     data: {
       appuntamentoId,

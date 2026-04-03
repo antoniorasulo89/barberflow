@@ -70,7 +70,6 @@ export default function AdminHomePage() {
           <h1 className="text-2xl font-semibold tracking-tight text-slate-950">
             {greeting()}{user?.email ? `, ${user.email.split('@')[0]}` : ''}.
           </h1>
-          <p className="text-sm text-slate-500 mt-1">Ecco una panoramica della giornata.</p>
         </div>
         <span className="text-sm font-medium text-slate-500">
           {capitalize(format(new Date(), 'EEEE d MMMM yyyy', { locale: it }))}

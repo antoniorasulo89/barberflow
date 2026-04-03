@@ -11,6 +11,7 @@ export interface Staff {
   ruolo: string;
   telefono?: string;
   attivo: boolean;
+  servizi?: Servizio[];
 }
 
 export interface Servizio {

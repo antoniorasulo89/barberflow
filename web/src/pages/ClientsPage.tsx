@@ -60,9 +60,6 @@ export default function ClientsPage() {
         <div>
           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">Rubrica clienti</div>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Clienti e relazioni ricorrenti</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600">
-            Cerca rapidamente, controlla il valore generato e apri ogni profilo senza perdere il contesto del lavoro giornaliero.
-          </p>
         </div>
         <button onClick={() => setShowNew(true)} className="btn-primary">
           Nuovo cliente

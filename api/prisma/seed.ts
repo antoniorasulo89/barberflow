@@ -113,6 +113,19 @@ async function main() {
   });
   console.log('Servizi ready');
 
+  await prisma.staffServizio.createMany({
+    data: [
+      { staffId: marco.id, servizioId: taglio.id },
+      { staffId: marco.id, servizioId: barba.id },
+      { staffId: marco.id, servizioId: taglioBarba.id },
+      { staffId: luca.id, servizioId: taglio.id },
+      { staffId: luca.id, servizioId: taglioBarba.id },
+      { staffId: luca.id, servizioId: colore.id },
+    ],
+    skipDuplicates: true,
+  });
+  console.log('Staff service assignments ready');
+
   // Clienti — skip entirely if any already exist for this tenant
   const existingClienti = await prisma.cliente.count({ where: { tenantId: tenant.id } });
   if (existingClienti > 0) {
@@ -136,8 +149,11 @@ async function main() {
     { nome: 'Vincenzo Conti', telefono: '+39 347 1000010', email: 'vincenzo.conti@email.it', tag: [] },
   ];
 
-  const servizi = [taglio, barba, taglioBarba, colore];
   const staffList = [marco, luca];
+  const staffServices = new Map([
+    [marco.id, [taglio, barba, taglioBarba]],
+    [luca.id, [taglio, taglioBarba, colore]],
+  ]);
 
   for (const clienteData of clientiData) {
     const cliente = await prisma.cliente.create({
@@ -154,8 +170,9 @@ async function main() {
       const appointmentDate = daysAgo(daysBack);
       const hours = [9, 10, 11, 15, 16, 17];
       const hour = hours[Math.floor(Math.random() * hours.length)];
-      const servizio = servizi[Math.floor(Math.random() * servizi.length)];
       const staff = staffList[Math.floor(Math.random() * staffList.length)];
+      const staffEligibleServices = staffServices.get(staff.id) ?? [taglio];
+      const servizio = staffEligibleServices[Math.floor(Math.random() * staffEligibleServices.length)];
 
       const inizio = setTime(appointmentDate, hour, 0);
       const fine = new Date(inizio.getTime() + servizio.durataMini * 60 * 1000);

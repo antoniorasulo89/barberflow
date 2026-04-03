@@ -47,7 +47,7 @@ export default function DashboardLayout() {
             </div>
             <div>
               <div className="text-base font-semibold text-white">BarberFlow</div>
-              <div className="text-xs text-white/55">Agenda, clienti e servizi in un unico posto</div>
+              <div className="text-xs text-white/55">Dashboard admin</div>
             </div>
           </div>
         </div>
@@ -56,7 +56,6 @@ export default function DashboardLayout() {
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-white">
             <div className="text-xs uppercase tracking-[0.18em] text-white/45">Workspace</div>
             <div className="mt-2 text-sm font-medium text-white/85">{tenantSlug ?? 'Tenant attivo'}</div>
-            <div className="mt-1 text-xs text-white/50">Pensato per un uso quotidiano, rapido e senza passaggi superflui.</div>
           </div>
         </div>
 

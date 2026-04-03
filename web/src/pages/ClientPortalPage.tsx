@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO, addDays } from 'date-fns';
@@ -36,6 +36,14 @@ const STEPS = [
   { id: 'data' as BookingStep, label: 'Data e ora' },
   { id: 'conferma' as BookingStep, label: 'Conferma' },
 ];
+
+const CLIENT_STATUS_LABELS: Record<Appuntamento['stato'], string> = {
+  pending: 'In attesa',
+  confirmed: 'Confermato',
+  done: 'Completato',
+  noshow: 'No-show',
+  cancelled: 'Cancellato',
+};
 
 function BookingSummary({ state }: { state: BookingState }) {
   const items = [
@@ -82,8 +90,13 @@ function BookingTab({ slug, onBooked }: { slug: string; onBooked: () => void }) 
   });
 
   const { data: staffList = [] } = useQuery<Staff[]>({
-    queryKey: ['public-staff', slug],
-    queryFn: () => publicFetch(slug, 'staff'),
+    queryKey: ['public-staff', slug, state.servizio?.id ?? 'all'],
+    queryFn: () =>
+      publicFetch(
+        slug,
+        'staff',
+        state.servizio ? { serviceId: state.servizio.id } : undefined
+      ),
   });
 
   const { data: slots = [], isFetching: loadingSlots } = useQuery<Slot[]>({
@@ -201,9 +214,6 @@ function BookingTab({ slug, onBooked }: { slug: string; onBooked: () => void }) 
         <div className="mb-6">
           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">Prenotazione guidata</div>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Blocca il tuo slot in pochi passaggi</h2>
-          <p className="mt-2 text-sm leading-7 text-slate-600">
-            Scegli il servizio, seleziona chi preferisci e conferma il tuo appuntamento senza creare un account.
-          </p>
         </div>
 
         <div className="mb-8 flex items-center">
@@ -238,7 +248,7 @@ function BookingTab({ slug, onBooked }: { slug: string; onBooked: () => void }) 
                 <button
                   key={servizio.id}
                   onClick={() => {
-                    setState((current) => ({ ...current, servizio }));
+                    setState((current) => ({ ...current, servizio, staff: null, slot: null }));
                     setStep('barbiere');
                   }}
                   className="w-full rounded-2xl border border-slate-200 p-4 text-left transition-colors hover:border-brand-300 hover:bg-brand-50"
@@ -281,6 +291,11 @@ function BookingTab({ slug, onBooked }: { slug: string; onBooked: () => void }) 
                 </button>
               ))}
             </div>
+            {staffList.length === 0 && (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
+                Nessun professionista disponibile per questo servizio. Prova a scegliere un servizio diverso o aggiorna le assegnazioni staff.
+              </div>
+            )}
             <button onClick={() => setStep('servizio')} className="mt-5 text-sm font-medium text-slate-500 hover:text-slate-700">
               Torna ai servizi
             </button>
@@ -484,13 +499,76 @@ function MyAppointmentsTab({ slug }: { slug: string }) {
     }
   }
 
+  const { upcomingAppointments, historyAppointments } = useMemo(() => {
+    const now = new Date();
+    const sorted = [...appointments].sort(
+      (a, b) => new Date(a.inizio).getTime() - new Date(b.inizio).getTime()
+    );
+
+    return {
+      upcomingAppointments: sorted.filter(
+        (appointment) =>
+          new Date(appointment.inizio) >= now &&
+          ['pending', 'confirmed'].includes(appointment.stato)
+      ),
+      historyAppointments: [...sorted]
+        .filter(
+          (appointment) =>
+            new Date(appointment.inizio) < now ||
+            ['done', 'noshow', 'cancelled'].includes(appointment.stato)
+        )
+        .reverse(),
+    };
+  }, [appointments]);
+
+  function AppointmentCard({
+    appointment,
+    showCancelAction,
+  }: {
+    appointment: Appuntamento;
+    showCancelAction: boolean;
+  }) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="font-semibold text-slate-950">{appointment.servizio?.nome}</div>
+              <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                {CLIENT_STATUS_LABELS[appointment.stato]}
+              </span>
+            </div>
+            <div className="mt-1 text-sm text-slate-500">{appointment.staff?.nome}</div>
+            <div className="mt-2 text-sm font-medium text-brand-700">
+              {format(parseISO(appointment.inizio), "d MMMM yyyy 'alle' HH:mm", { locale: it })}
+            </div>
+            <div className="mt-1 text-sm text-slate-600">Importo previsto: EUR {appointment.importo}</div>
+          </div>
+          {showCancelAction ? (
+            <button
+              onClick={() => setAppointmentToCancel(appointment)}
+              disabled={cancelMutation.isPending}
+              className="btn-secondary border-red-200 text-red-600 hover:bg-red-50"
+            >
+              Cancella prenotazione
+            </button>
+          ) : (
+            <div className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500">
+              Appuntamento archiviato nello storico
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="surface-panel p-6 sm:p-8">
         <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">Recupero prenotazioni</div>
         <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Rivedi o cancella i tuoi appuntamenti</h2>
         <p className="mt-2 text-sm leading-7 text-slate-600">
-          Inserisci il numero di telefono usato durante la prenotazione. Non serve un account: usiamo quel contatto per ritrovare il tuo storico attivo.
+          Inserisci il numero di telefono usato durante la prenotazione. Non serve un account: usiamo quel contatto per ritrovare appuntamenti in programma e storico recente.
         </p>
         <form onSubmit={handleLogin} className="mt-6 space-y-4">
           <div>
@@ -525,7 +603,7 @@ function MyAppointmentsTab({ slug }: { slug: string }) {
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">Area cliente</div>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Ciao, {nome}</h2>
             <p className="mt-1 text-sm leading-7 text-slate-600">
-              Qui trovi le prenotazioni in programma e puoi cancellarle in autonomia quando serve.
+              Qui trovi prenotazioni in programma e storico recente, cosi hai sempre un quadro chiaro dei tuoi appuntamenti.
             </p>
           </div>
           <button onClick={logout} className="btn-secondary">
@@ -537,31 +615,45 @@ function MyAppointmentsTab({ slug }: { slug: string }) {
           <div className="mt-6 rounded-2xl bg-slate-50 py-6 text-center text-sm text-slate-500">Caricamento delle prenotazioni...</div>
         ) : appointments.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
-            Nessuna prenotazione in programma. Se vuoi, puoi tornare alla tab di booking e fissarne una nuova in pochi passaggi.
+            Nessuna prenotazione trovata. Se vuoi, puoi tornare alla tab di booking e fissarne una nuova in pochi passaggi.
           </div>
         ) : (
-          <div className="mt-6 space-y-3">
-            {appointments.map((appointment) => (
-              <div key={appointment.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <div className="font-semibold text-slate-950">{appointment.servizio?.nome}</div>
-                    <div className="mt-1 text-sm text-slate-500">{appointment.staff?.nome}</div>
-                    <div className="mt-2 text-sm font-medium text-brand-700">
-                      {format(parseISO(appointment.inizio), "d MMMM yyyy 'alle' HH:mm", { locale: it })}
-                    </div>
-                    <div className="mt-1 text-sm text-slate-600">Importo previsto: EUR {appointment.importo}</div>
-                  </div>
-                  <button
-                    onClick={() => setAppointmentToCancel(appointment)}
-                    disabled={cancelMutation.isPending}
-                    className="btn-secondary border-red-200 text-red-600 hover:bg-red-50"
-                  >
-                    Cancella prenotazione
-                  </button>
-                </div>
+          <div className="mt-6 space-y-6">
+            <section>
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">In programma</h3>
+                <span className="text-sm text-slate-500">{upcomingAppointments.length} appuntamenti</span>
               </div>
-            ))}
+              {upcomingAppointments.length === 0 ? (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
+                  Nessun appuntamento futuro in programma.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {upcomingAppointments.map((appointment) => (
+                    <AppointmentCard key={appointment.id} appointment={appointment} showCancelAction />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section>
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Storico</h3>
+                <span className="text-sm text-slate-500">{historyAppointments.length} appuntamenti</span>
+              </div>
+              {historyAppointments.length === 0 ? (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-6 text-slate-600">
+                  Lo storico comparira qui dopo i primi appuntamenti completati o cancellati.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {historyAppointments.map((appointment) => (
+                    <AppointmentCard key={appointment.id} appointment={appointment} showCancelAction={false} />
+                  ))}
+                </div>
+              )}
+            </section>
           </div>
         )}
       </div>
@@ -609,7 +701,6 @@ export default function ClientPortalPage() {
             </div>
             <div>
               <div className="text-lg font-semibold text-white">BarberFlow</div>
-              <div className="text-sm text-white/70">Prenotazioni e gestione appuntamenti senza attriti</div>
             </div>
           </Link>
           <Link to="/admin/login" className="btn-secondary border-white/15 bg-white/10 text-white hover:bg-white/15">
@@ -617,28 +708,17 @@ export default function ClientPortalPage() {
           </Link>
         </div>
 
-        <div className="mt-10 grid gap-10 xl:grid-cols-[0.95fr_1.05fr]">
-          <section className="text-white">
+        <div className="mt-8 grid gap-6 xl:grid-cols-[0.34fr_1.06fr]">
+          <section className="rounded-[32px] bg-[linear-gradient(180deg,_rgba(31,20,8,0.96)_0%,_rgba(61,41,18,0.92)_100%)] px-5 py-6 text-white shadow-xl shadow-black/10">
             <div className="inline-flex rounded-full border border-white/15 bg-white/10 px-4 py-1.5 text-sm backdrop-blur">
-              Esperienza cliente mobile-first
+              Prenotazione cliente
             </div>
-            <h1 className="mt-5 max-w-xl text-4xl font-semibold leading-tight tracking-tight">
-              Prenota in autonomia, senza account e senza passaggi superflui.
+            <h1 className="mt-5 text-3xl font-semibold leading-tight tracking-tight">
+              Prenota senza account.
             </h1>
-            <p className="mt-4 max-w-xl text-base leading-8 text-white/75">
-              Questo workspace mostra come BarberFlow gestisce prenotazioni, disponibilita e recupero appuntamenti con un&apos;esperienza chiara, veloce e credibile.
-            </p>
-            <div className="mt-8 grid gap-3 sm:grid-cols-2">
-              {[
-                'Prenotazione veloce in 4 passaggi',
-                'Disponibilita aggiornata in tempo reale',
-                'Gestione autonoma delle prenotazioni',
-                'Interfaccia progettata per smartphone',
-              ].map((item) => (
-                <div key={item} className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm text-white/85 backdrop-blur">
-                  {item}
-                </div>
-              ))}
+            <div className="mt-6 space-y-3 text-sm text-white/80">
+              <div className="rounded-2xl border border-white/12 bg-black/10 px-4 py-3">Servizio, professionista, data e conferma</div>
+              <div className="rounded-2xl border border-white/12 bg-black/10 px-4 py-3">Disponibilita aggiornata e storico appuntamenti</div>
             </div>
           </section>
 

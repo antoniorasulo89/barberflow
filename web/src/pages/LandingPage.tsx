@@ -106,10 +106,10 @@ export default function LandingPage() {
             Software per prenotazioni e gestione barber shop
           </span>
           <h1 className="mt-6 text-4xl font-semibold leading-tight tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
-            Prenotazioni online e agenda operativa in un prodotto che sembra gia pronto da vendere.
+            Prenotazioni online e agenda operativa per il tuo barber shop.
           </h1>
-          <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-slate-600">
-            BarberFlow unisce esperienza cliente, dashboard gestionale e organizzazione del lavoro quotidiano in un flusso semplice, credibile e veloce da adottare.
+          <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-600">
+            Meno telefonate, meno carta, meno attesa. Clienti, staff e agenda in un unico strumento.
           </p>
           <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
             <Link to={`/${DEFAULT_SLUG}`} className="btn-primary px-7 py-3 text-base">
@@ -125,10 +125,7 @@ export default function LandingPage() {
       <section className="py-18 bg-white">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-10">
           <div className="mb-12 text-center">
-            <h2 className="text-3xl font-semibold tracking-tight text-slate-950">Tutto cio che serve per lavorare meglio</h2>
-            <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-              Una base solida per presentare BarberFlow come piattaforma SaaS e non come semplice demo tecnica.
-            </p>
+            <h2 className="text-3xl font-semibold tracking-tight text-slate-950">Tutto quello che serve, niente di superfluo</h2>
           </div>
 
           <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
@@ -175,7 +172,7 @@ export default function LandingPage() {
           <div className="mb-12 text-center">
             <h2 className="text-3xl font-semibold tracking-tight text-slate-950">Prezzi semplici, nessuna sorpresa</h2>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-slate-600">
-              Inizia gratis, scala quando serve. Nessun contratto, nessun costo nascosto.
+              Nessun contratto, nessun costo nascosto.
             </p>
           </div>
           <div className="grid gap-6 sm:grid-cols-3">
@@ -255,7 +252,6 @@ export default function LandingPage() {
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-10">
           <div className="mb-12 text-center">
             <h2 className="text-3xl font-semibold tracking-tight text-slate-950">Come funziona</h2>
-            <p className="mt-3 text-sm leading-7 text-slate-600">Un flusso pensato per ridurre attrito, errori e tempo perso.</p>
           </div>
 
           <div className="grid gap-8 sm:grid-cols-3">
@@ -278,11 +274,8 @@ export default function LandingPage() {
       <section className="bg-slate-950 py-20 text-white">
         <div className="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-10">
           <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            Una piattaforma che puoi gia presentare come prodotto.
+            Pronto da usare da oggi.
           </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-white/70">
-            Landing marketing, booking credibile, area admin piu robusta e una UX che comunica piu fiducia fin dal primo clic.
-          </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <Link to={`/${DEFAULT_SLUG}`} className="btn-primary px-7 py-3 text-base">
               Vedi il portale cliente
