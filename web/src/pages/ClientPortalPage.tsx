@@ -717,28 +717,17 @@ export default function ClientPortalPage() {
           </Link>
         </div>
 
-        <div className="mt-10 grid gap-10 xl:grid-cols-[0.95fr_1.05fr]">
-          <section className="text-white">
+        <div className="mt-8 grid gap-6 xl:grid-cols-[0.34fr_1.06fr]">
+          <section className="rounded-[32px] bg-[linear-gradient(180deg,_rgba(31,20,8,0.96)_0%,_rgba(61,41,18,0.92)_100%)] px-5 py-6 text-white shadow-xl shadow-black/10">
             <div className="inline-flex rounded-full border border-white/15 bg-white/10 px-4 py-1.5 text-sm backdrop-blur">
-              Esperienza cliente mobile-first
+              Prenotazione cliente
             </div>
-            <h1 className="mt-5 max-w-xl text-4xl font-semibold leading-tight tracking-tight">
-              Prenota in autonomia, senza account e senza passaggi superflui.
+            <h1 className="mt-5 text-3xl font-semibold leading-tight tracking-tight">
+              Prenota senza account.
             </h1>
-            <p className="mt-4 max-w-xl text-base leading-8 text-white/75">
-              Questo workspace mostra come BarberFlow gestisce prenotazioni, disponibilita e recupero appuntamenti con un&apos;esperienza chiara, veloce e credibile.
-            </p>
-            <div className="mt-8 grid gap-3 sm:grid-cols-2">
-              {[
-                'Prenotazione veloce in 4 passaggi',
-                'Disponibilita aggiornata in tempo reale',
-                'Gestione autonoma delle prenotazioni',
-                'Interfaccia progettata per smartphone',
-              ].map((item) => (
-                <div key={item} className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm text-white/85 backdrop-blur">
-                  {item}
-                </div>
-              ))}
+            <div className="mt-6 space-y-3 text-sm text-white/80">
+              <div className="rounded-2xl border border-white/12 bg-black/10 px-4 py-3">Servizio, professionista, data e conferma</div>
+              <div className="rounded-2xl border border-white/12 bg-black/10 px-4 py-3">Disponibilita aggiornata e storico appuntamenti</div>
             </div>
           </section>
 
